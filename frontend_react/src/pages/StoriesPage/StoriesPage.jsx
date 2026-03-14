@@ -51,8 +51,8 @@ export default function StoriesPage() {
     const storyId = `s-${Date.now()}`;
 
     try {
-      // Отправляем на бэкенд
-      await addHistory(storyId, currentUserId, v);
+      // Отправляем на бэкенд (authorId берётся автоматически из userService)
+      await addHistory(storyId, v);
 
       // Добавляем локально для мгновенного отображения
       const newStory = {
@@ -108,8 +108,8 @@ export default function StoriesPage() {
     const commentId = `c-${Date.now()}`;
 
     try {
-      // Отправляем комментарий на бэкенд
-      await apiAddComment(id, commentId, currentUserId, v);
+      // Отправляем комментарий на бэкенд (authorId берётся автоматически из userService)
+      await apiAddComment(id, commentId, v);
 
       // Обновляем локальное состояние
       setStories((prev) =>

@@ -115,8 +115,8 @@ export default function HomePage() {
               {selectedCountryIndex != null && countries[selectedCountryIndex] && (
                 <>
                   {countryFlags[countries[selectedCountryIndex]] && (
-                    <img 
-                      src={countryFlags[countries[selectedCountryIndex]]} 
+                    <img
+                      src={countryFlags[countries[selectedCountryIndex]]}
                       alt=""
                       className="country-flag-icon"
                     />
@@ -232,9 +232,9 @@ export default function HomePage() {
                 <button
                   className={
                     "pill pill--selectable" +
-                    (filters.peerAge === "18-25" ? " pill--active" : "")
+                    (filters.peerAge === "18–25" ? " pill--active" : "")
                   }
-                  onClick={() => handlePillClick("peerAge", "18-25")}
+                  onClick={() => handlePillClick("peerAge", "18–25")}
                 >
                   {t("age_18_25")}
                 </button>

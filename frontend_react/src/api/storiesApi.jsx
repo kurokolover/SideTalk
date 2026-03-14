@@ -1,8 +1,9 @@
 import { BACKEND_URL, API_ENDPOINTS } from './config';
+import { getUserId } from './userService';
 
 /**
  * fetch all
- * @returns {Promise<Array>} array of history objects
+ * @returns {Promise<Array>}
  */
 export async function getHistories() {
   const response = await fetch(`${BACKEND_URL}${API_ENDPOINTS.GET_HISTORIES}`, {
@@ -23,17 +24,18 @@ export async function getHistories() {
 /**
  * Addnewstory
  * @param {string} id - id history
- * @param {string} authorId - ID author
  * @param {string} text - history
+ * @param {string} [authorId] - ID author
  * @returns {Promise<void>}
  */
-export async function addHistory(id, authorId, text) {
+export async function addHistory(id, text, authorId = null) {
+  const userId = authorId || getUserId();
   const response = await fetch(`${BACKEND_URL}${API_ENDPOINTS.ADD_HISTORY}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ id, author_id: authorId, text }),
+    body: JSON.stringify({ id, author_id: userId, text }),
   });
 
   if (!response.ok) {
@@ -45,17 +47,18 @@ export async function addHistory(id, authorId, text) {
  * Acomment
  * @param {string} historyId - ID history
  * @param {string} id - id comment
- * @param {string} authorId - ID author
  * @param {string} text - comment
+ * @param {string} [authorId] - ID author
  * @returns {Promise<void>}
  */
-export async function addComment(historyId, id, authorId, text) {
+export async function addComment(historyId, id, text, authorId = null) {
+  const userId = authorId || getUserId();
   const response = await fetch(`${BACKEND_URL}${API_ENDPOINTS.ADD_COMMENT}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ history_id: historyId, id, author_id: authorId, text }),
+    body: JSON.stringify({ history_id: historyId, id, author_id: userId, text }),
   });
 
   if (!response.ok) {

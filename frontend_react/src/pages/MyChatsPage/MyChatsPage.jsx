@@ -20,8 +20,12 @@ export default function MyChatsPage() {
       ) : (
         <div className="mychats-list">
           {chats.map((c) => {
-            const last = c.messages[c.messages.length - 1];
-            const lastText = language === "ru" ? last.textRu : last.textEn;
+            const last = c.messages && c.messages.length > 0
+              ? c.messages[c.messages.length - 1]
+              : null;
+            const lastText = last
+              ? (language === "ru" ? last.textRu : last.textEn)
+              : t("mychats_no_messages");
             return (
               <button
                 key={c.id}
@@ -34,15 +38,17 @@ export default function MyChatsPage() {
                 <div className="mychats-item__body">
                   <div className="mychats-item__title">
                     {c.peerCountry && countryFlags[c.peerCountry] && (
-                      <img 
-                        src={countryFlags[c.peerCountry]} 
+                      <img
+                        src={countryFlags[c.peerCountry]}
                         alt=""
                         className="mychats-item__flag"
                       />
                     )}
-                    <span>{c.peerId || c.peerName || t("chat_title")}</span>
+                    <span>{c.displayId || t("chat_title")}</span>
                   </div>
-                  <div className="mychats-item__preview">{lastText}</div>
+                  <div className={`mychats-item__preview${!last ? ' mychats-item__preview--empty' : ''}`}>
+                    {lastText}
+                  </div>
                   {c.ended && (
                     <div className="mychats-item__status">{t("chat_ended")}</div>
                   )}

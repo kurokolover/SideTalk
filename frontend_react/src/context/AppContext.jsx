@@ -1,20 +1,15 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { avatarFiles, translations } from "../shared/i18n";
+import { loadChats, saveChats } from "../utils/localStorage";
+import userService from "../api/userService";
 
-// генерация случайного ID пользователя
-const generateUserId = () => {
-  const num = Math.floor(100000 + Math.random() * 900000);
-  return `id${num}`;
-};
-
-// глобальное состояние приложения (без бэк)
+// глобальное состояние приложения
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  // ID текущего пользователя (генерируется один раз при загрузке)
-  const [currentUserId] = useState(() => generateUserId());
+  // ID текущего пользователя (из централизованного сервиса, сохраняется в localStorage)
+  const [currentUserId] = useState(() => userService.getUserId());
 
-  // язык интерфейса
   const [language, setLanguage] = useState("ru");
 
   // переключатели
@@ -26,10 +21,8 @@ export function AppProvider({ children }) {
   const [activeTab, setActiveTab] = useState("chat"); // chat|stories
   const [chatMode, setChatMode] = useState("single-chat"); // single-chat|my-chats
 
-  // страна
   const [selectedCountryIndex, setSelectedCountryIndex] = useState(null);
 
-  // фильтры
   const [filters, setFilters] = useState({
     myAge: "any",
     myGender: "any",
@@ -42,8 +35,35 @@ export function AppProvider({ children }) {
     avatarFiles[0].file
   );
 
-  // история чатов (в оперативной памяти)
-  const [chats, setChats] = useState([]);
+  // функция для генерации displayId
+  const generateDisplayId = () => {
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    return `id${randomNum}`;
+  };
+
+  // история чатов (загружается из localStorage и добавляем displayId если его нет)
+  const [chats, setChats] = useState(() => {
+    // Load chats from localStorage on initialization
+    const loadedChats = loadChats();
+    
+    // Добавляем displayId для старых чатов, у которых его нет
+    const chatsWithDisplayId = loadedChats.map(chat => {
+      if (!chat.displayId) {
+        return {
+          ...chat,
+          displayId: generateDisplayId()
+        };
+      }
+      return chat;
+    });
+    
+    // Сохраняем обновленные чаты обратно в localStorage
+    if (chatsWithDisplayId.length !== loadedChats.length) {
+      saveChats(chatsWithDisplayId);
+    }
+    
+    return chatsWithDisplayId;
+  });
 
   // последний активный чат (для экрана после завершения)
   const [lastChatId, setLastChatId] = useState(null);
@@ -52,6 +72,29 @@ export function AppProvider({ children }) {
   const [stories, setStories] = useState([]);
 
   const dict = translations[language] || translations.ru;
+
+  // Save chats to localStorage whenever they change
+  useEffect(() => {
+    saveChats(chats);
+  }, [chats]);
+
+  // функция для создания нового чата
+  const startChat = (peerData) => {
+    const newChat = {
+      id: `chat_${Date.now()}`,
+      displayId: generateDisplayId(), // добавляем красивый ID для отображения
+      peerId: peerData.id, // реальный ID собеседника (не показываем)
+      peerName: peerData.name,
+      peerAvatar: peerData.avatar,
+      peerCountry: peerData.country,
+      createdAt: Date.now(),
+      messages: [],
+      ended: false,
+    };
+    
+    setChats(prev => [newChat, ...prev]);
+    return newChat;
+  };
 
   const value = useMemo(
     () => ({
@@ -98,6 +141,9 @@ export function AppProvider({ children }) {
       // stories
       stories,
       setStories,
+
+      // functions
+      startChat,
     }),
     [
       currentUserId,
@@ -122,6 +168,6 @@ export function AppProvider({ children }) {
 
 export function useApp() {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error("useApp доожен быть внутри AppProvider");
+  if (!ctx) throw new Error("useApp должен быть внутри AppProvider");
   return ctx;
 }

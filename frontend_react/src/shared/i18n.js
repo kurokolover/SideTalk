@@ -52,6 +52,7 @@ export const translations = {
 
     // my chats
     mychats_empty: "История чата пуста...",
+    mychats_no_messages: "нет сообщений",
     mychats_open: "открыть",
 
     // stories
@@ -145,6 +146,7 @@ export const translations = {
 
     // my chats
     mychats_empty: "Chat history is empty...",
+    mychats_no_messages: "no messages",
     mychats_open: "open",
 
     // stories
@@ -228,7 +230,7 @@ export const countryFlags = {
   "США": "/flags/usa.svg",
   "Канада": "/flags/canada.svg",
   "Великобритания": "/flags/uk.svg",
-  
+
   // английские названия
   "Russia": "/flags/russia.svg",
   "Belarus": "/flags/belarus.svg",

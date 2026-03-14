@@ -47,6 +47,12 @@ func main() {
 	}
 	log.Println("Migrations applied successfully")
 
+	// Инициализация WebSocket и matching сервисов
+	matchingService := usecase.NewMatchingService()
+	hub := usecase.NewHub(matchingService)
+	go hub.Run()
+	log.Println("WebSocket hub started")
+
 	// Инициализация слоев
 	historyRepo := repo.NewHistoryTable(db)
 
@@ -61,6 +67,9 @@ func main() {
 
 	addLikeUsecase := usecase.NewAddLikeUsecase(historyRepo)
 	addLikeHandler := handler.NewAddLikeHandler(addLikeUsecase)
+
+	// WebSocket handler
+	wsHandler := handler.NewWSHandler(hub)
 
 	// Создание роутера
 	r := chi.NewRouter()
@@ -85,6 +94,9 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok"}`))
 	})
+
+	// WebSocket endpoint
+	r.Get("/ws", wsHandler.HandleWebSocket)
 
 	// API
 	r.Route("/api/v1", func(r chi.Router) {

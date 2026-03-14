@@ -2,15 +2,31 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { avatarFiles } from "../../shared/i18n";
+import wsService from "../../api/websocket";
+import { getUserId } from "../../api/userService";
 
-// страница подбора собеседника: таймер 5 сек, затем создаём чат
+// страница подбора собеседника: подключение к WebSocket и ожидание матча
 export default function SearchingPage() {
   const nav = useNavigate();
-  const { dict, selectedAvatarFile, setChats, setLastChatId } = useApp();
+  const {
+    dict,
+    language,
+    antiBullying,
+    geoEnabled,
+    selectedCountryIndex,
+    filterEnabled,
+    filters,
+    selectedAvatarFile,
+    setChats,
+    setLastChatId,
+    currentUserId
+  } = useApp();
   const t = (key) => dict[key] || key;
 
   const [seconds, setSeconds] = useState(0);
+  const [error, setError] = useState(null);
   const createdRef = useRef(false);
+  const wsConnectedRef = useRef(false);
 
   const peerAvatar = useMemo(() => {
     // для демо выбираем «следующий» аватар
@@ -34,64 +50,113 @@ export default function SearchingPage() {
   }, []);
 
   useEffect(() => {
-    if (seconds < 5 || createdRef.current) return;
+    if (createdRef.current || wsConnectedRef.current) return;
+
+    const initWebSocket = async () => {
+      try {
+        // Connect to WebSocket
+        await wsService.connect();
+        wsConnectedRef.current = true;
+
+        // Set up event listeners
+        wsService.on('match_found', handleMatchFound);
+        wsService.on('error', handleError);
+        wsService.on('connection_failed', handleConnectionFailed);
+
+        // Get selected country name (string from array)
+        const countries = dict.countries || [];
+        const selectedCountryName = geoEnabled && selectedCountryIndex != null && selectedCountryIndex >= 0
+          ? countries[selectedCountryIndex] || ""
+          : "";
+
+        // Send match request
+        const matchRequest = {
+          userId: currentUserId,
+          language,
+          antiBullying,
+          geoEnabled,
+          selectedCountry: selectedCountryName,
+          filterEnabled,
+          filters,
+          avatar: selectedAvatarFile, // Include user's avatar
+        };
+
+        console.log('Sending match request:', matchRequest);
+        wsService.requestMatch(matchRequest);
+      } catch (error) {
+        console.error('WebSocket connection error:', error);
+        setError('Failed to connect to server. Please try again.');
+      }
+    };
+
+    initWebSocket();
+
+    // Cleanup on unmount
+    return () => {
+      wsService.off('match_found', handleMatchFound);
+      wsService.off('error', handleError);
+      wsService.off('connection_failed', handleConnectionFailed);
+    };
+  }, []);
+
+  const handleMatchFound = (payload) => {
+    if (createdRef.current) return;
     createdRef.current = true;
 
-    // создаём новый чат в истории
-    const id = `chat-${Date.now()}`;
-    const seedMessages = [
-      {
-        id: `m1-${id}`,
-        from: "them",
-        textRu: "прив кд чд",
-        textEn: "hi lol",
-        ts: Date.now(),
-      },
-      {
-        id: `m2-${id}`,
-        from: "me",
-        textRu: "фу ты скучный",
-        textEn: "ugh you're boring",
-        ts: Date.now(),
-      },
-    ];
+    const { chatId, peerId, peerCountry, peerAvatar: receivedPeerAvatar } = payload;
 
-    setLastChatId(id);
+    // Use chatId from server as the chat session ID
+    const finalChatId = chatId || `chat-${getUserId()}-${Date.now()}`;
 
-    setChats((prev) => {
-      const peerId = `id${String(303001 + prev.length).padStart(6, "0")}`;
-      return [
-        {
-          id,
-          peerId,
-          peerName: peerId,
-          peerAvatar: peerAvatar.file,
-          peerCountry: peerCountry,
-          createdAt: Date.now(),
-          ended: false,
-          messages: seedMessages,
-        },
-        ...prev,
-      ];
-    });
+    // Use actual peer ID from server for display, or generate a proper user ID format
+    const peerName = peerId || `id${Math.floor(100000 + Math.random() * 900000)}`;
 
-nav(`/chat/${id}`, { replace: true });
-  }, [seconds, nav, setChats, peerAvatar.file]);
+    // Create new chat in history
+    const newChat = {
+      id: finalChatId,
+      peerId: peerId || `id${Math.floor(100000 + Math.random() * 900000)}`, // Use proper user ID format
+      peerName: peerName,
+      peerAvatar: receivedPeerAvatar || peerAvatar.file, // Use avatar from backend or fallback
+      peerCountry: peerCountry || null,
+      createdAt: Date.now(),
+      ended: false,
+      messages: [],
+    };
+
+    setLastChatId(finalChatId);
+    setChats((prev) => [newChat, ...prev]);
+
+    // Navigate to chat
+    nav(`/chat/${finalChatId}`, { replace: true });
+  };
+
+  const handleError = (payload) => {
+    console.error('WebSocket error:', payload);
+    setError(payload.message || 'An error occurred');
+  };
+
+  const handleConnectionFailed = (payload) => {
+    setError(payload.message || 'Failed to connect to server');
+  };
+
+  const handleCancel = () => {
+    wsService.disconnect();
+    nav('/');
+  };
 
   return (
     <main className="content-card page-enter">
       <div className="searching">
         <h2 className="searching-title">{t("searching_title")}</h2>
-        <p className="searching-sub">{t("searching_sub")}</p>
+        <p className="searching-sub">{error || t("searching_sub")}</p>
 
-        <div className="searching-spinner" aria-hidden="true" />
+        {!error && <div className="searching-spinner" aria-hidden="true" />}
 
         <p className="searching-timer">
-          00:{String(Math.min(seconds, 5)).padStart(2, "0")}
+          00:{String(Math.min(seconds, 59)).padStart(2, "0")}
         </p>
 
-        <button className="secondary-btn" onClick={() => nav("/")}
-        >
+        <button className="secondary-btn" onClick={handleCancel}>
           {t("searching_cancel")}
         </button>
       </div>
