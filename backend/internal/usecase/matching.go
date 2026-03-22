@@ -58,7 +58,11 @@ func (s *MatchingService) AddToQueue(req domain.MatchRequest) chan *domain.ChatS
 	if match != nil {
 		log.Printf("Match found! User1=%s, User2=%s", waiting.UserID, match.UserID)
 
-		session := s.createSession(waiting.UserID, match.UserID)
+		session := s.createSession(
+			waiting.UserID,
+			match.UserID,
+			waiting.Request.AntiBullying || match.Request.AntiBullying,
+		)
 
 		waiting.ResponseChan <- session
 		match.ResponseChan <- session
@@ -103,11 +107,6 @@ func (s *MatchingService) isCompatible(req1, req2 domain.MatchRequest) bool {
 		req1.UserID, req1.Language, req1.GeoEnabled, req1.Country,
 		req2.UserID, req2.Language, req2.GeoEnabled, req2.Country,
 	)
-
-	if req1.Language != req2.Language {
-		log.Printf("Language mismatch: %s != %s", req1.Language, req2.Language)
-		return false
-	}
 
 	if req1.GeoEnabled || req2.GeoEnabled {
 		if req1.Country != "" && req2.Country != "" && req1.Country != req2.Country {
@@ -154,13 +153,14 @@ func (s *MatchingService) matchesFilters(filters1, filters2 domain.UserFilters) 
 	return true
 }
 
-func (s *MatchingService) createSession(user1ID, user2ID string) *domain.ChatSession {
+func (s *MatchingService) createSession(user1ID, user2ID string, antiBullying bool) *domain.ChatSession {
 	session := &domain.ChatSession{
-		ID:        generateSessionID(),
-		User1ID:   user1ID,
-		User2ID:   user2ID,
-		CreatedAt: time.Now(),
-		Active:    true,
+		ID:           generateSessionID(),
+		User1ID:      user1ID,
+		User2ID:      user2ID,
+		CreatedAt:    time.Now(),
+		Active:       true,
+		AntiBullying: antiBullying,
 	}
 
 	s.activeSessions[session.ID] = session

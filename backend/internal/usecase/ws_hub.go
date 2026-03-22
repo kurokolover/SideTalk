@@ -218,10 +218,60 @@ func (h *Hub) notifyPeerDisconnectedLocked(userID string) {
 	log.Printf("Could not find client for user %s to send peer_disconnected", userID)
 }
 
+func (h *Hub) notifyPeerChatEnded(userID string) {
+	data, err := marshalPeerChatEndedMsg()
+	if err != nil {
+		log.Printf("Error marshaling peer_chat_ended message: %v", err)
+		return
+	}
+
+	if client, ok := h.GetClientByUserID(userID); ok {
+		select {
+		case client.Send <- data:
+			log.Printf("Sent peer_chat_ended notification to user %s", userID)
+		default:
+			log.Printf("Channel full, failed to notify peer %s", userID)
+		}
+	} else {
+		log.Printf("Could not find client for user %s to send peer_chat_ended", userID)
+	}
+}
+
+func (h *Hub) notifyPeerChatEndedLocked(userID string) {
+	data, err := marshalPeerChatEndedMsg()
+	if err != nil {
+		log.Printf("Error marshaling peer_chat_ended message: %v", err)
+		return
+	}
+
+	for _, client := range h.clients {
+		if client.GetUserData().UserID == userID {
+			select {
+			case client.Send <- data:
+				log.Printf("Sent peer_chat_ended notification to user %s", userID)
+			default:
+				log.Printf("Channel full, failed to notify peer %s", userID)
+			}
+			return
+		}
+	}
+	log.Printf("Could not find client for user %s to send peer_chat_ended", userID)
+}
+
 func marshalPeerDisconnectedMsg() ([]byte, error) {
 	msg := domain.WSMessage{
 		Type:    "peer_disconnected",
 		Payload: map[string]string{"message": "Your chat partner has disconnected"},
+	}
+	return json.Marshal(msg)
+}
+
+func marshalPeerChatEndedMsg() ([]byte, error) {
+	msg := domain.WSMessage{
+		Type: "peer_chat_ended",
+		Payload: map[string]string{
+			"message": "Your chat partner ended the chat",
+		},
 	}
 	return json.Marshal(msg)
 }
@@ -386,10 +436,11 @@ func (c *Client) handleMatchRequest(payload interface{}) {
 			}
 
 			matchPayload := domain.MatchFoundPayload{
-				ChatID:      session.ID,
-				PeerID:      peerID,
-				PeerCountry: peerCountry,
-				PeerAvatar:  peerAvatar,
+				ChatID:       session.ID,
+				PeerID:       peerID,
+				PeerCountry:  peerCountry,
+				PeerAvatar:   peerAvatar,
+				AntiBullying: session.AntiBullying,
 			}
 
 			msg := domain.WSMessage{
@@ -492,7 +543,7 @@ func (c *Client) handleEndChat() {
 
 	if peerID, ok := c.Hub.matchingService.GetPeerID(chatID, userData.UserID); ok {
 		log.Printf("Notifying peer %s about chat end", peerID)
-		c.Hub.notifyPeerDisconnected(peerID)
+		c.Hub.notifyPeerChatEnded(peerID)
 
 		if peer, ok := c.Hub.GetClientByUserID(peerID); ok {
 			peer.SetChatID("")

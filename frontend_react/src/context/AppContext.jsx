@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { avatarFiles, translations } from "../shared/i18n";
-import { loadChats, saveChats } from "../utils/localStorage";
+import { loadChats, saveChats, loadSettings, saveSettings } from "../utils/localStorage";
 import userService from "../api/userService";
 
 // глобальное состояние приложения
@@ -9,30 +9,41 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   // ID текущего пользователя (из централизованного сервиса, сохраняется в localStorage)
   const [currentUserId] = useState(() => userService.getUserId());
+  const persistedSettings = loadSettings() || {};
 
-  const [language, setLanguage] = useState("ru");
+  const [language, setLanguage] = useState(persistedSettings.language || "ru");
 
   // переключатели
-  const [antiBullying, setAntiBullying] = useState(true);
-  const [geoEnabled, setGeoEnabled] = useState(false);
-  const [filterEnabled, setFilterEnabled] = useState(true);
+  const [antiBullying, setAntiBullying] = useState(
+    persistedSettings.antiBullying ?? true
+  );
+  const [geoEnabled, setGeoEnabled] = useState(
+    persistedSettings.geoEnabled ?? false
+  );
+  const [filterEnabled, setFilterEnabled] = useState(
+    persistedSettings.filterEnabled ?? true
+  );
 
   // вкладки и подменю
   const [activeTab, setActiveTab] = useState("chat"); // chat|stories
   const [chatMode, setChatMode] = useState("single-chat"); // single-chat|my-chats
 
-  const [selectedCountryIndex, setSelectedCountryIndex] = useState(null);
+  const [selectedCountryIndex, setSelectedCountryIndex] = useState(
+    persistedSettings.selectedCountryIndex ?? null
+  );
 
-  const [filters, setFilters] = useState({
-    myAge: "any",
-    myGender: "any",
-    peerAge: "any",
-    peerGender: "any",
-  });
+  const [filters, setFilters] = useState(
+    persistedSettings.filters || {
+      myAge: "any",
+      myGender: "any",
+      peerAge: "any",
+      peerGender: "any",
+    }
+  );
 
   // аватар
   const [selectedAvatarFile, setSelectedAvatarFile] = useState(
-    avatarFiles[0].file
+    persistedSettings.selectedAvatarFile || avatarFiles[0].file
   );
 
   // функция для генерации displayId
@@ -77,6 +88,26 @@ export function AppProvider({ children }) {
   useEffect(() => {
     saveChats(chats);
   }, [chats]);
+
+  useEffect(() => {
+    saveSettings({
+      language,
+      antiBullying,
+      geoEnabled,
+      filterEnabled,
+      selectedCountryIndex,
+      filters,
+      selectedAvatarFile,
+    });
+  }, [
+    language,
+    antiBullying,
+    geoEnabled,
+    filterEnabled,
+    selectedCountryIndex,
+    filters,
+    selectedAvatarFile,
+  ]);
 
   // функция для создания нового чата
   const startChat = (peerData) => {

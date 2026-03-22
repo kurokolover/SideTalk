@@ -13,8 +13,30 @@ export const saveChats = (chats) => {
     const now = Date.now();
     const maxAge = MAX_CHAT_AGE_DAYS * 24 * 60 * 60 * 1000;
 
-    const validChats = chats
-      .filter(chat => {
+    const dedupedChats = chats.reduce((acc, chat) => {
+      const existingIndex = acc.findIndex((c) => c.id === chat.id);
+
+      if (existingIndex === -1) {
+        acc.push(chat);
+      } else {
+        const existing = acc[existingIndex];
+
+        acc[existingIndex] = {
+          ...existing,
+          ...chat,
+          messages:
+            chat.messages && chat.messages.length > 0
+              ? chat.messages
+              : existing.messages || [],
+          ended: chat.ended ?? existing.ended ?? false,
+        };
+      }
+
+      return acc;
+    }, []);
+
+    const validChats = dedupedChats
+      .filter((chat) => {
         const chatAge = now - chat.createdAt;
         return chatAge < maxAge;
       })

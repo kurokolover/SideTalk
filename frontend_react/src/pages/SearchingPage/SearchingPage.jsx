@@ -103,7 +103,13 @@ export default function SearchingPage() {
     if (createdRef.current) return;
     createdRef.current = true;
 
-    const { chatId, peerId, peerCountry, peerAvatar: receivedPeerAvatar } = payload;
+    const {
+      chatId,
+      peerId,
+      peerCountry,
+      peerAvatar: receivedPeerAvatar,
+      antiBullying: chatAntiBullying,
+    } = payload;
 
     // Use chatId from server as the chat session ID
     const finalChatId = chatId || `chat-${getUserId()}-${Date.now()}`;
@@ -120,11 +126,29 @@ export default function SearchingPage() {
       peerCountry: peerCountry || null,
       createdAt: Date.now(),
       ended: false,
+      antiBullying: !!chatAntiBullying,
       messages: [],
     };
 
     setLastChatId(finalChatId);
-    setChats((prev) => [newChat, ...prev]);
+    setChats((prev) => {
+      const existingChat = prev.find((c) => c.id === finalChatId);
+
+      if (existingChat) {
+        return [
+          {
+            ...existingChat,
+            ...newChat,
+            messages: existingChat.messages || [],
+            ended: false,
+            endedAt: null,
+          },
+          ...prev.filter((c) => c.id !== finalChatId),
+        ];
+      }
+
+      return [newChat, ...prev];
+    });
 
     // Navigate to chat
     nav(`/chat/${finalChatId}`, { replace: true });

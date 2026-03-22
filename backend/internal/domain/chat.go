@@ -21,11 +21,12 @@ type MatchRequest struct {
 }
 
 type ChatSession struct {
-	ID        string    `json:"id"`
-	User1ID   string    `json:"user1Id"`
-	User2ID   string    `json:"user2Id"`
-	CreatedAt time.Time `json:"createdAt"`
-	Active    bool      `json:"active"`
+	ID           string    `json:"id"`
+	User1ID      string    `json:"user1Id"`
+	User2ID      string    `json:"user2Id"`
+	CreatedAt    time.Time `json:"createdAt"`
+	Active       bool      `json:"active"`
+	AntiBullying bool      `json:"antiBullying"`
 }
 
 type ChatMessage struct {
@@ -44,10 +45,11 @@ type WSMessage struct {
 
 // match is found
 type MatchFoundPayload struct {
-	ChatID      string `json:"chatId"`
-	PeerID      string `json:"peerId"`
-	PeerCountry string `json:"peerCountry,omitempty"`
-	PeerAvatar  string `json:"peerAvatar,omitempty"`
+	ChatID       string `json:"chatId"`
+	PeerID       string `json:"peerId"`
+	PeerCountry  string `json:"peerCountry,omitempty"`
+	PeerAvatar   string `json:"peerAvatar,omitempty"`
+	AntiBullying bool   `json:"antiBullying"`
 }
 
 type ChatMessagePayload struct {
