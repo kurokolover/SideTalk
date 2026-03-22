@@ -58,7 +58,9 @@ class WebSocketService {
 
     this.connectionPromise = new Promise((resolve, reject) => {
       try {
-        const wsUrl = BACKEND_URL.replace('http', 'ws') + '/ws';
+        // Use relative WebSocket URL - nginx will proxy to backend
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws`;
         console.log('Connecting to WebSocket:', wsUrl);
         this.ws = new WebSocket(wsUrl);
         this.isIntentionallyClosed = false;

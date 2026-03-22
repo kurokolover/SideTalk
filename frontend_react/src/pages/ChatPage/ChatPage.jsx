@@ -290,7 +290,7 @@ export default function ChatPage() {
             className={"chat-bubble" + (m.from === "me" ? " chat-bubble--me" : "")}
           >
             <div className="chat-bubble__text">
-              {language === "ru" ? m.textRu : m.textEn}
+              {m.textRu || m.textEn}
             </div>
             <div className="chat-bubble__time">{formatTime(m.ts)}</div>
           </div>

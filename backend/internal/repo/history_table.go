@@ -194,3 +194,19 @@ func (h *HistoryTable) IncrementLikes(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (h *HistoryTable) DecrementLikes(ctx context.Context, id string) error {
+	query := `UPDATE history SET likes_counter = GREATEST(0, likes_counter - 1) WHERE id = $1`
+
+	result, err := h.DB.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to decrement likes: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}

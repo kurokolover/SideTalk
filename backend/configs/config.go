@@ -30,6 +30,7 @@ type DatabaseConfig struct {
 	MaxOpenConns    int           `yaml:"max_open_conns"`
 	MaxIdleConns    int           `yaml:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
+	ConnMaxIdleTime time.Duration `yaml:"conn_max_idle_time"`
 }
 
 // Load загружает конфигурацию из YAML файла
@@ -78,9 +79,7 @@ func (c *Config) setDefaults() {
 	if c.Database.MaxIdleConns == 0 {
 		c.Database.MaxIdleConns = 5
 	}
-	if c.Database.ConnMaxLifetime == 0 {
-		c.Database.ConnMaxLifetime = 5 * time.Minute
-	}
+	// ConnMaxLifetime и ConnMaxIdleTime = 0 означает бесконечное время жизни
 }
 
 // overrideFromEnv переопределяет значения из переменных окружения

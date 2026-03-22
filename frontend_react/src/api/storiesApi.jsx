@@ -84,3 +84,22 @@ export async function addLike(id) {
     throw new Error(`Failed to add like: ${response.status}`);
   }
 }
+
+/**
+ * unlike
+ * @param {string} id - ID history
+ * @returns {Promise<void>}
+ */
+export async function removeLike(id) {
+  const response = await fetch(`${BACKEND_URL}${API_ENDPOINTS.REMOVE_LIKE}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ id }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to remove like: ${response.status}`);
+  }
+}

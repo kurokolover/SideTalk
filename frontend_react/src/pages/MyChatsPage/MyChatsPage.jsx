@@ -24,7 +24,7 @@ export default function MyChatsPage() {
               ? c.messages[c.messages.length - 1]
               : null;
             const lastText = last
-              ? (language === "ru" ? last.textRu : last.textEn)
+              ? (last.textRu || last.textEn)
               : t("mychats_no_messages");
             return (
               <button

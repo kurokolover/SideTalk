@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
-import { getHistories, addHistory, addComment as apiAddComment, addLike } from "../../api/storiesApi.jsx";
+import { getHistories, addHistory, addComment as apiAddComment, addLike, removeLike } from "../../api/storiesApi.jsx";
+import { saveLikedStory, removeLikedStory, isStoryLiked } from "../../utils/localStorage";
 
 // лента историй: публикация, лайк toggle, комментарии
 export default function StoriesPage() {
@@ -24,7 +25,7 @@ export default function StoriesPage() {
           textRu: item.text,
           textEn: item.text,
           createdAt: item.time ? new Date(item.time).getTime() : Date.now(),
-          liked: false,
+          liked: isStoryLiked(item.id), // Проверяем, лайкнута ли история в localStorage
           likes: item.likes || 0,
           comments: (item.comments || []).map((c) => ({
             id: c.id,
@@ -77,28 +78,51 @@ export default function StoriesPage() {
     const story = stories.find((s) => s.id === id);
     if (!story) return;
 
-    // Если ещё не лайкнуто, отправляем лайк на бэкенд
-    if (!story.liked) {
+    // Если история уже лайкнута, убираем лайк
+    if (story.liked) {
+      try {
+        await removeLike(id);
+        // Удаляем лайк из localStorage
+        removeLikedStory(id);
+
+        // Обновляем локальное состояние
+        setStories((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? {
+                  ...s,
+                  liked: false,
+                  likes: Math.max(0, s.likes - 1),
+                }
+              : s
+          )
+        );
+      } catch (error) {
+        console.error("Failed to remove like:", error);
+      }
+    } else {
+      // Если история не лайкнута, добавляем лайк
       try {
         await addLike(id);
+        // Сохраняем лайк в localStorage
+        saveLikedStory(id);
+
+        // Обновляем локальное состояние
+        setStories((prev) =>
+          prev.map((s) =>
+            s.id === id
+              ? {
+                  ...s,
+                  liked: true,
+                  likes: s.likes + 1,
+                }
+              : s
+          )
+        );
       } catch (error) {
         console.error("Failed to add like:", error);
-        return;
       }
     }
-
-    // Обновляем локальное состояние
-    setStories((prev) =>
-      prev.map((s) =>
-        s.id === id
-          ? {
-              ...s,
-              liked: !s.liked,
-              likes: s.liked ? Math.max(0, s.likes - 1) : s.likes + 1,
-            }
-          : s
-      )
-    );
   };
 
   const addComment = async (id, value) => {
@@ -218,7 +242,7 @@ function StoryCard({ story, language, t, now, onToggleLike, onAddComment }) {
 
   const timeAgo = getTimeAgo();
 
-  const text = language === "ru" ? story.textRu : story.textEn;
+  const text = story.textRu || story.textEn;
   const authorDisplay = story.authorId || "id439449";
 
   // Check if text is long (more than ~80 chars or has multiple lines)
@@ -280,7 +304,7 @@ function StoryCard({ story, language, t, now, onToggleLike, onAddComment }) {
             <div key={c.id} className="story-comment-item">
               <span className="story-comment-item__name">{c.authorId || "id439449"}:</span>
               <span className="story-comment-item__text">
-                {language === "ru" ? c.textRu : c.textEn}
+                {c.textRu || c.textEn}
               </span>
             </div>
           ))}

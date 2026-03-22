@@ -68,6 +68,9 @@ func main() {
 	addLikeUsecase := usecase.NewAddLikeUsecase(historyRepo)
 	addLikeHandler := handler.NewAddLikeHandler(addLikeUsecase)
 
+	removeLikeUsecase := usecase.NewRemoveLikeUsecase(historyRepo)
+	removeLikeHandler := handler.NewRemoveLikeHandler(removeLikeUsecase)
+
 	// WebSocket handler
 	wsHandler := handler.NewWSHandler(hub)
 
@@ -104,6 +107,7 @@ func main() {
 		r.Post("/add_history", addHistoryHandler.Handle)
 		r.Get("/get_histories", getHistoryHandler.Handle)
 		r.Post("/add_like", addLikeHandler.Handle)
+		r.Post("/remove_like", removeLikeHandler.Handle)
 	})
 
 	server := &http.Server{
@@ -148,12 +152,26 @@ func initDB(cfg configs.DatabaseConfig) (*sqlx.DB, error) {
 	// Настройка пула соединений
 	db.SetMaxOpenConns(cfg.MaxOpenConns)
 	db.SetMaxIdleConns(cfg.MaxIdleConns)
+	// Значение 0 означает бесконечное время жизни соединений
 	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+	db.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
 
 	// Проверка соединения
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping: %w", err)
 	}
+
+	lifetimeStr := "infinite"
+	if cfg.ConnMaxLifetime > 0 {
+		lifetimeStr = cfg.ConnMaxLifetime.String()
+	}
+	idleTimeStr := "infinite"
+	if cfg.ConnMaxIdleTime > 0 {
+		idleTimeStr = cfg.ConnMaxIdleTime.String()
+	}
+
+	log.Printf("Database pool configured: MaxOpenConns=%d, MaxIdleConns=%d, ConnMaxLifetime=%s, ConnMaxIdleTime=%s",
+		cfg.MaxOpenConns, cfg.MaxIdleConns, lifetimeStr, idleTimeStr)
 
 	return db, nil
 }

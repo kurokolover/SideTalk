@@ -2,6 +2,7 @@ const STORAGE_KEYS = {
   CHATS: 'sidetalk_chats',
   USER_ID: 'sidetalk_user_id',
   SETTINGS: 'sidetalk_settings',
+  LIKED_STORIES: 'sidetalk_liked_stories',
 };
 
 const MAX_CHATS = 100;
@@ -155,6 +156,52 @@ export const getStorageInfo = () => {
   }
 };
 
+export const saveLikedStory = (storyId) => {
+  try {
+    const liked = loadLikedStories();
+    if (!liked.includes(storyId)) {
+      liked.push(storyId);
+      localStorage.setItem(STORAGE_KEYS.LIKED_STORIES, JSON.stringify(liked));
+    }
+    return true;
+  } catch (error) {
+    console.error('Error saving liked story:', error);
+    return false;
+  }
+};
+
+export const removeLikedStory = (storyId) => {
+  try {
+    const liked = loadLikedStories();
+    const filtered = liked.filter(id => id !== storyId);
+    localStorage.setItem(STORAGE_KEYS.LIKED_STORIES, JSON.stringify(filtered));
+    return true;
+  } catch (error) {
+    console.error('Error removing liked story:', error);
+    return false;
+  }
+};
+
+export const loadLikedStories = () => {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEYS.LIKED_STORIES);
+    return stored ? JSON.parse(stored) : [];
+  } catch (error) {
+    console.error('Error loading liked stories:', error);
+    return [];
+  }
+};
+
+export const isStoryLiked = (storyId) => {
+  try {
+    const liked = loadLikedStories();
+    return liked.includes(storyId);
+  } catch (error) {
+    console.error('Error checking if story is liked:', error);
+    return false;
+  }
+};
+
 export default {
   saveChats,
   loadChats,
@@ -164,4 +211,8 @@ export default {
   saveSettings,
   loadSettings,
   getStorageInfo,
+  saveLikedStory,
+  removeLikedStory,
+  loadLikedStories,
+  isStoryLiked,
 };

@@ -553,7 +553,11 @@ func (c *Client) handleEndChat() {
 
 	c.Hub.matchingService.EndSession(chatID)
 	c.SetChatID("")
-	log.Printf("Chat %s ended by client %s", chatID, c.ID)
+
+	// Remove user from matching queue if they were waiting
+	c.Hub.matchingService.RemoveFromQueue(userData.UserID)
+
+	log.Printf("Chat %s ended by client %s, removed from queue", chatID, c.ID)
 }
 
 func (c *Client) sendError(message string) {
