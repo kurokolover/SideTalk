@@ -1,5 +1,7 @@
-// API - Use relative URLs so nginx can proxy to backend
-export const BACKEND_URL = '';
+// API base URL:
+// - empty string => same-origin requests via nginx/docker proxy
+// - VITE_API_BASE_URL => external backend for deployments without same-origin proxy
+export const BACKEND_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
 // API endpoints
 export const API_ENDPOINTS = {

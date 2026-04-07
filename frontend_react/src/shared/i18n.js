@@ -32,6 +32,7 @@ export const translations = {
     searching_title: "ПОИСК СОБЕСЕДНИКА",
     searching_sub: "необходимо немного подождать...",
     searching_cancel: "отменить поиск",
+    searching_filters_hint: "Попробуйте поменять фильтры",
 
     // chat
     chat_title: "анонимный собеседник",
@@ -126,6 +127,7 @@ export const translations = {
     searching_title: "FINDING A PARTNER",
     searching_sub: "please wait a bit...",
     searching_cancel: "cancel",
+    searching_filters_hint: "Try adjusting your filters",
 
     // chat
     chat_title: "anonymous partner",

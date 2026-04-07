@@ -11,6 +11,8 @@ export default function StoriesPage() {
   const [text, setText] = useState("");
   const [isComposeOpen, setComposeOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState("");
 
   // Загрузка историй с бэкенда при монтировании компонента
   useEffect(() => {
@@ -52,6 +54,9 @@ export default function StoriesPage() {
     const storyId = `s-${Date.now()}`;
 
     try {
+      setIsPublishing(true);
+      setPublishError("");
+
       // Отправляем на бэкенд (authorId берётся автоматически из userService)
       await addHistory(storyId, v);
 
@@ -69,8 +74,16 @@ export default function StoriesPage() {
 
       setStories([newStory, ...stories]);
       setText("");
+      setComposeOpen(false);
     } catch (error) {
       console.error("Failed to publish story:", error);
+      setPublishError(
+        language === "ru"
+          ? "Не удалось опубликовать историю. Проверь подключение к серверу."
+          : "Failed to publish story. Check your server connection."
+      );
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -191,7 +204,10 @@ export default function StoriesPage() {
         className={"modal" + (isComposeOpen ? " modal--open" : "")}
         role="dialog"
         aria-modal="true"
-        onClick={() => setComposeOpen(false)}
+        onClick={() => {
+          setComposeOpen(false);
+          setPublishError("");
+        }}
       >
         <div className="modal-backdrop" />
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -204,14 +220,17 @@ export default function StoriesPage() {
               placeholder={t("stories_placeholder")}
               rows={4}
             />
+            {publishError && (
+              <div className="story-compose__error">{publishError}</div>
+            )}
             <button
               className="primary-btn"
-              onClick={() => {
-                publish();
-                setComposeOpen(false);
-              }}
+              onClick={publish}
+              disabled={isPublishing}
             >
-              {t("stories_publish")}
+              {isPublishing
+                ? (language === "ru" ? "публикуем..." : "publishing...")
+                : t("stories_publish")}
             </button>
           </div>
         </div>

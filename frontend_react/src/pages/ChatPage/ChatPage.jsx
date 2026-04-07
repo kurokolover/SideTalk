@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { countryFlags } from "../../shared/i18n";
 import wsService from "../../api/websocket";
+import { containsAbusiveLanguage } from "../../utils/antiBullying";
 
 // чат-диалог: сообщения, ввод, завершение
 export default function ChatPage() {
@@ -91,6 +92,30 @@ export default function ChatPage() {
     setConnectionStatus("disconnected");
   }, []);
 
+  const handleMessageBlocked = useCallback(
+    (payload) => {
+      if (payload.chatId && payload.chatId !== id) {
+        return;
+      }
+
+      setChats((prev) =>
+        prev.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: (c.messages || []).map((message) =>
+                  message.id === payload.messageId
+                    ? { ...message, blocked: true }
+                    : message
+                ),
+              }
+            : c
+        )
+      );
+    },
+    [id, setChats]
+  );
+
   useEffect(() => {
     if (!chat) {
       nav("/");
@@ -109,6 +134,7 @@ export default function ChatPage() {
     wsService.on("chat_message", handleChatMessage);
     wsService.on("peer_disconnected", handlePeerDisconnected);
     wsService.on("peer_chat_ended", handlePeerChatEnded);
+    wsService.on("message_blocked", handleMessageBlocked);
     wsService.on("connected", handleConnected);
     wsService.on("disconnected", handleDisconnected);
 
@@ -116,6 +142,7 @@ export default function ChatPage() {
       wsService.off("chat_message", handleChatMessage);
       wsService.off("peer_disconnected", handlePeerDisconnected);
       wsService.off("peer_chat_ended", handlePeerChatEnded);
+      wsService.off("message_blocked", handleMessageBlocked);
       wsService.off("connected", handleConnected);
       wsService.off("disconnected", handleDisconnected);
     };
@@ -125,6 +152,7 @@ export default function ChatPage() {
     handleChatMessage,
     handlePeerDisconnected,
     handlePeerChatEnded,
+    handleMessageBlocked,
     handleConnected,
     handleDisconnected,
   ]);
@@ -156,6 +184,27 @@ export default function ChatPage() {
     const value = text.trim();
     if (!value || !chat || chat.ended) return;
 
+    const timestamp = Date.now();
+    const messageId = `m-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+    const isBlockedByFilter = chat.antiBullying && containsAbusiveLanguage(value);
+
+    const msg = {
+      id: messageId,
+      from: "me",
+      textRu: value,
+      textEn: value,
+      ts: timestamp,
+      blocked: isBlockedByFilter,
+    };
+
+    const next = [...(chat.messages || []), msg];
+    updateChatMessages(next);
+    setText("");
+
+    if (isBlockedByFilter) {
+      return;
+    }
+
     if (!wsService.isConnected()) {
       console.error("Cannot send message: WebSocket not connected");
       setConnectionStatus("disconnected");
@@ -167,21 +216,6 @@ export default function ChatPage() {
       }
       setConnectionStatus("connected");
     }
-
-    const timestamp = Date.now();
-    const messageId = `m-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
-
-    const msg = {
-      id: messageId,
-      from: "me",
-      textRu: value,
-      textEn: value,
-      ts: timestamp,
-    };
-
-    const next = [...(chat.messages || []), msg];
-    updateChatMessages(next);
-    setText("");
 
     const sent = wsService.sendMessage({
       messageId,
@@ -218,7 +252,7 @@ export default function ChatPage() {
   };
 
   const handleBack = () => {
-    nav("/my-chats");
+    nav("/");
   };
 
   if (!chat) return null;
@@ -287,12 +321,23 @@ export default function ChatPage() {
         {(chat.messages || []).map((m) => (
           <div
             key={m.id}
-            className={"chat-bubble" + (m.from === "me" ? " chat-bubble--me" : "")}
+            className={
+              "chat-bubble" +
+              (m.from === "me" ? " chat-bubble--me" : "") +
+              (m.blocked ? " chat-bubble--blocked" : "")
+            }
           >
             <div className="chat-bubble__text">
               {m.textRu || m.textEn}
             </div>
-            <div className="chat-bubble__time">{formatTime(m.ts)}</div>
+            <div className="chat-bubble__footer">
+              {m.from === "me" && m.blocked && (
+                <div className="chat-bubble__status">
+                  {t("chat_message_blocked")}
+                </div>
+              )}
+              <div className="chat-bubble__time">{formatTime(m.ts)}</div>
+            </div>
           </div>
         ))}
       </div>

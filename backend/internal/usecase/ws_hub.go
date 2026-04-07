@@ -276,6 +276,17 @@ func marshalPeerChatEndedMsg() ([]byte, error) {
 	return json.Marshal(msg)
 }
 
+func marshalMessageBlockedMsg(chatID, messageID string) ([]byte, error) {
+	msg := domain.WSMessage{
+		Type: "message_blocked",
+		Payload: domain.MessageBlockedPayload{
+			MessageID: messageID,
+			ChatID:    chatID,
+		},
+	}
+	return json.Marshal(msg)
+}
+
 func (c *Client) ReadPump() {
 	defer func() {
 		c.cancel()
@@ -461,10 +472,6 @@ func (c *Client) handleMatchRequest(payload interface{}) {
 				log.Printf("Failed to send match_found to client %s: channel full", c.ID)
 			}
 
-		case <-time.After(60 * time.Second):
-			c.Hub.matchingService.RemoveFromQueue(c.GetUserData().UserID)
-			c.sendError("No match found. Please try again.")
-
 		case <-c.ctx.Done():
 			log.Printf("Match request cancelled for client %s: context done", c.ID)
 		}
@@ -509,6 +516,14 @@ func (c *Client) handleChatMessage(payload interface{}) {
 		log.Printf("Chat session %s not found for client %s", chatID, userData.UserID)
 		c.sendError("Chat session not found")
 		return
+	}
+
+	if session, exists := c.Hub.matchingService.GetSession(chatID); exists && session.AntiBullying {
+		if containsAbusiveLanguage(msgPayload.Text) {
+			log.Printf("Blocked abusive message from %s in chat %s", userData.UserID, chatID)
+			c.sendMessageBlocked(chatID, msgPayload.MessageID)
+			return
+		}
 	}
 
 	log.Printf("Forwarding message from %s to peer %s in chat %s", userData.UserID, peerID, chatID)
@@ -576,5 +591,19 @@ func (c *Client) sendError(message string) {
 	case c.Send <- data:
 	default:
 		log.Printf("Failed to send error message to client %s", c.ID)
+	}
+}
+
+func (c *Client) sendMessageBlocked(chatID, messageID string) {
+	data, err := marshalMessageBlockedMsg(chatID, messageID)
+	if err != nil {
+		log.Printf("Error marshaling message_blocked message: %v", err)
+		return
+	}
+
+	select {
+	case c.Send <- data:
+	default:
+		log.Printf("Failed to send message_blocked event to client %s", c.ID)
 	}
 }

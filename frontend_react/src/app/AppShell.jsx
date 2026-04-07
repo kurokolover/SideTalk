@@ -12,17 +12,19 @@ export default function AppShell({ children }) {
   const pathname = location.pathname;
   const isChatRoute = pathname.startsWith("/chat/");
   const isAfterRoute = pathname.startsWith("/after");
+  const isHomeRoute = pathname === "/";
+  const isStoriesRoute = pathname.startsWith("/stories");
+  const isMyChatsRoute = pathname.startsWith("/my-chats");
   const isImmersive = isChatRoute || isAfterRoute; // чат/после чата — без верхней панели и вкладок
 
   // язык можно менять только на главной и в ленте историй
-  const showLanguage = pathname === "/" || pathname.startsWith("/stories");
+  const showLanguage = isHomeRoute || isStoriesRoute;
 
   // выбор аватара — только на главной странице
-  const showAvatar = pathname === "/";
+  const showAvatar = isHomeRoute;
 
   // панелька
-  const showTabs =
-    pathname === "/" || pathname.startsWith("/stories") || pathname.startsWith("/my-chats");
+  const showTabs = isHomeRoute || isStoriesRoute || isMyChatsRoute;
 
   const {
     language,
@@ -56,12 +58,12 @@ export default function AppShell({ children }) {
 
   // подсветка вкладок по роуту
   useEffect(() => {
-    if (location.pathname.startsWith("/stories")) {
+    if (isStoriesRoute) {
       setActiveTab("stories");
       return;
     }
     setActiveTab("chat");
-  }, [location.pathname, setActiveTab]);
+  }, [isStoriesRoute, setActiveTab]);
 
   // закрытие подменю кликом вне
   useEffect(() => {
@@ -110,11 +112,9 @@ export default function AppShell({ children }) {
   const handleTabClick = (tab) => {
     if (tab === "chat") {
       setChatSubmenuOpen((prev) => !prev);
-      setActiveTab("chat");
       return;
     }
     setChatSubmenuOpen(false);
-    setActiveTab("stories");
     nav("/stories");
   };
 
@@ -220,26 +220,18 @@ export default function AppShell({ children }) {
           <div
             className={
               "chat-submenu" +
-              (isChatSubmenuOpen && activeTab === "chat"
-                ? " chat-submenu--open"
-                : "")
+              (isChatSubmenuOpen ? " chat-submenu--open" : "")
             }
             ref={chatSubmenuRef}
           >
             <button
-              className={
-                "chat-submenu__item chat-submenu__item--top" +
-                (chatMode === "my-chats" ? " chat-submenu__item--active" : "")
-              }
+              className="chat-submenu__item chat-submenu__item--top"
               onClick={() => handleChatModeClick("my-chats")}
             >
               {t("submenu_my_chats")}
             </button>
             <button
-              className={
-                "chat-submenu__item chat-submenu__item--bottom" +
-                (chatMode === "single-chat" ? " chat-submenu__item--active" : "")
-              }
+              className="chat-submenu__item chat-submenu__item--bottom"
               onClick={() => handleChatModeClick("single-chat")}
             >
               {t("submenu_chat")}

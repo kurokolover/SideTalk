@@ -59,3 +59,8 @@ type ChatMessagePayload struct {
 	Timestamp int64  `json:"timestamp"`
 	FromMe    bool   `json:"fromMe"`
 }
+
+type MessageBlockedPayload struct {
+	MessageID string `json:"messageId"`
+	ChatID    string `json:"chatId"`
+}

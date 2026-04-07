@@ -24,9 +24,9 @@ export default function SearchingPage() {
   const t = (key) => dict[key] || key;
 
   const [seconds, setSeconds] = useState(0);
-  const [error, setError] = useState(null);
   const createdRef = useRef(false);
   const wsConnectedRef = useRef(false);
+  const showFiltersHint = seconds >= 60;
 
   const peerAvatar = useMemo(() => {
     // для демо выбираем «следующий» аватар
@@ -85,7 +85,6 @@ export default function SearchingPage() {
         wsService.requestMatch(matchRequest);
       } catch (error) {
         console.error('WebSocket connection error:', error);
-        setError('Failed to connect to server. Please try again.');
       }
     };
 
@@ -155,12 +154,14 @@ export default function SearchingPage() {
   };
 
   const handleError = (payload) => {
+    if (payload?.message === 'No match found. Please try again.') {
+      return;
+    }
     console.error('WebSocket error:', payload);
-    setError(payload.message || 'An error occurred');
   };
 
   const handleConnectionFailed = (payload) => {
-    setError(payload.message || 'Failed to connect to server');
+    console.error('WebSocket connection failed:', payload);
   };
 
   const handleCancel = () => {
@@ -168,21 +169,30 @@ export default function SearchingPage() {
     nav('/');
   };
 
+  const formattedMinutes = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const formattedSeconds = String(seconds % 60).padStart(2, "0");
+
   return (
     <main className="content-card page-enter">
       <div className="searching">
         <h2 className="searching-title">{t("searching_title")}</h2>
-        <p className="searching-sub">{error || t("searching_sub")}</p>
+        <p className="searching-sub">{t("searching_sub")}</p>
 
-        {!error && <div className="searching-spinner" aria-hidden="true" />}
+        <div className="searching-spinner" aria-hidden="true" />
 
         <p className="searching-timer">
-          00:{String(Math.min(seconds, 59)).padStart(2, "0")}
+          {formattedMinutes}:{formattedSeconds}
         </p>
 
         <button className="secondary-btn" onClick={handleCancel}>
           {t("searching_cancel")}
         </button>
+
+        {showFiltersHint && (
+          <p className="searching-filters-hint">
+            {t("searching_filters_hint")}
+          </p>
+        )}
       </div>
     </main>
   );
