@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -53,27 +54,11 @@ func (s *MatchingService) AddToQueue(req domain.MatchRequest) chan *domain.ChatS
 		ResponseChan: responseChan,
 		done:         make(chan struct{}),
 	}
-
-	match := s.findMatch(waiting)
-	if match != nil {
-		log.Printf("Match found! User1=%s, User2=%s", waiting.UserID, match.UserID)
-
-		session := s.createSession(
-			waiting.UserID,
-			match.UserID,
-			waiting.Request.AntiBullying || match.Request.AntiBullying,
-		)
-
-		waiting.ResponseChan <- session
-		match.ResponseChan <- session
-
-		delete(s.waitingUsers, match.UserID)
-
-		return responseChan
-	}
-
-	log.Printf("No match found for user %s, adding to queue. Queue size: %d", req.UserID, len(s.waitingUsers)+1)
 	s.waitingUsers[req.UserID] = waiting
+	log.Printf("User %s added to queue. Queue size: %d", req.UserID, len(s.waitingUsers))
+
+	s.matchWaitingUsersLocked()
+
 	return responseChan
 }
 
@@ -99,6 +84,59 @@ func (s *MatchingService) findMatch(user *WaitingUser) *WaitingUser {
 		}
 	}
 	return nil
+}
+
+func (s *MatchingService) matchWaitingUsersLocked() {
+	if len(s.waitingUsers) < 2 {
+		return
+	}
+
+	waitingList := make([]*WaitingUser, 0, len(s.waitingUsers))
+	for _, waitingUser := range s.waitingUsers {
+		waitingList = append(waitingList, waitingUser)
+	}
+
+	sort.Slice(waitingList, func(i, j int) bool {
+		return waitingList[i].JoinedAt.Before(waitingList[j].JoinedAt)
+	})
+
+	used := make(map[string]bool, len(waitingList))
+
+	for i := 0; i < len(waitingList); i++ {
+		current := waitingList[i]
+		if current == nil || used[current.UserID] {
+			continue
+		}
+
+		for j := i + 1; j < len(waitingList); j++ {
+			candidate := waitingList[j]
+			if candidate == nil || used[candidate.UserID] {
+				continue
+			}
+
+			if !s.isCompatible(current.Request, candidate.Request) {
+				continue
+			}
+
+			log.Printf("Match found! User1=%s, User2=%s", current.UserID, candidate.UserID)
+
+			session := s.createSession(
+				current.UserID,
+				candidate.UserID,
+				current.Request.AntiBullying || candidate.Request.AntiBullying,
+			)
+
+			current.ResponseChan <- session
+			candidate.ResponseChan <- session
+
+			used[current.UserID] = true
+			used[candidate.UserID] = true
+
+			delete(s.waitingUsers, current.UserID)
+			delete(s.waitingUsers, candidate.UserID)
+			break
+		}
+	}
 }
 
 func (s *MatchingService) isCompatible(req1, req2 domain.MatchRequest) bool {

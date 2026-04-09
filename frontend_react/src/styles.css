@@ -40,6 +40,7 @@ body {
   min-height: 100vh;
   font-family: "Nunito", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", sans-serif;
+  -webkit-text-size-adjust: 100%;
   background: var(--bg-main);
   display: flex;
   align-items: center;
@@ -1065,16 +1066,32 @@ body::after {
   margin: 14px 10px 0;
   position: relative;
   z-index: 1;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1.35;
   letter-spacing: 0.03em;
-  color: #8e3348;
+  color: #b22d45;
   text-align: center;
   text-shadow:
-    0 2px 8px rgba(142, 51, 72, 0.16),
-    0 0 12px rgba(142, 51, 72, 0.08);
-  animation: searchingHintFadeIn 0.45s ease-out;
+    0 2px 10px rgba(178, 45, 69, 0.2),
+    0 0 14px rgba(178, 45, 69, 0.12);
+  animation:
+    searchingHintFadeIn 0.45s ease-out,
+    searchingHintPulse 2.8s ease-in-out 0.45s infinite;
+}
+
+.searching-filters-hint::before {
+  content: "⚠";
+  font-size: 16px;
+  line-height: 1;
+  color: #cf2846;
+  text-shadow:
+    0 2px 12px rgba(207, 40, 70, 0.24),
+    0 0 12px rgba(207, 40, 70, 0.14);
 }
 
 @keyframes searchingHintFadeIn {
@@ -1085,6 +1102,21 @@ body::after {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes searchingHintPulse {
+  0%, 100% {
+    transform: translateY(0);
+    text-shadow:
+      0 2px 10px rgba(178, 45, 69, 0.2),
+      0 0 14px rgba(178, 45, 69, 0.12);
+  }
+  50% {
+    transform: translateY(-1px);
+    text-shadow:
+      0 4px 16px rgba(178, 45, 69, 0.28),
+      0 0 20px rgba(178, 45, 69, 0.16);
   }
 }
 
@@ -1327,7 +1359,8 @@ body::after {
   background: transparent;
   font-family: inherit;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.4;
   color: var(--text-main);
 }
 
@@ -1789,7 +1822,8 @@ body::after {
   padding: 14px 16px;
   font-family: inherit;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
+  line-height: 1.45;
   color: var(--text-main);
   outline: none;
   transition: all 0.25s ease;
@@ -2045,7 +2079,8 @@ body::after {
   padding: 10px 16px;
   font-family: inherit;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1.4;
   outline: none;
   transition: all 0.2s ease;
 }
@@ -2478,7 +2513,7 @@ body::after {
   }
 
   .chat-input input {
-    font-size: 13px;
+    font-size: 16px;
   }
 
   .chat-send {

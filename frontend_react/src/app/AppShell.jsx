@@ -52,6 +52,7 @@ export default function AppShell({ children }) {
 
   const t = (key) => dict[key] || key;
   const countries = dict.countries || [];
+  const chatTabLabel = isMyChatsRoute ? t("submenu_my_chats") : t("tab_chat");
 
   const currentAvatar =
     avatarFiles.find((a) => a.file === selectedAvatarFile) || avatarFiles[0];
@@ -198,7 +199,7 @@ export default function AppShell({ children }) {
               }
               onClick={() => handleTabClick("chat")}
             >
-              <span className="tab-label">{t("tab_chat")}</span>
+              <span className="tab-label">{chatTabLabel}</span>
               <span className="tab-arrow" aria-hidden="true">
                 ▾
               </span>
