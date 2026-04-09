@@ -42,6 +42,7 @@ export const translations = {
     chat_placeholder: "отправить сообщение...",
     chat_send: "отправить",
     chat_finish: "завершить",
+    chat_message_blocked: "сообщение не отправлено",
     back: "назад",
 
     // after chat
@@ -137,6 +138,7 @@ export const translations = {
     chat_placeholder: "type a message...",
     chat_send: "send",
     chat_finish: "finish",
+    chat_message_blocked: "message not delivered",
     back: "back",
 
     // after chat

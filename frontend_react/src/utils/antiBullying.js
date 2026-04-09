@@ -1,38 +1,99 @@
-import { antiBullyingDictionary } from "../shared/banwords";
+import { antiBullyingDictionary } from "../shared/banwords.js";
 
-const normalizeForModeration = (text) =>
+const LATIN_TO_CYRILLIC = {
+  a: "а",
+  b: "в",
+  c: "с",
+  e: "е",
+  h: "н",
+  k: "к",
+  m: "м",
+  o: "о",
+  p: "р",
+  t: "т",
+  x: "х",
+  y: "у",
+};
+
+const CYRILLIC_TO_LATIN = {
+  а: "a",
+  в: "b",
+  с: "c",
+  е: "e",
+  н: "h",
+  к: "k",
+  м: "m",
+  о: "o",
+  р: "p",
+  т: "t",
+  х: "x",
+  у: "y",
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeWhitespace = (text) =>
   text
-    .toLowerCase()
-    .replace(/ё/g, "е")
     .replace(/[^\p{L}\p{N}\s]+/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const mapLookalikes = (text, replacementMap) =>
+  Array.from(text, (char) => replacementMap[char] || char).join("");
 
-const phrasePatterns = [
-  ...antiBullyingDictionary.phrases.ru,
-  ...antiBullyingDictionary.phrases.en,
-].map((phrase) => new RegExp(`(^|\\s)${escapeRegex(phrase)}(\\s|$)`, "u"));
+const normalizeBase = (text) =>
+  normalizeWhitespace(text.toLowerCase().replace(/ё/g, "е"));
 
-const wordPrefixPatterns = [
-  ...antiBullyingDictionary.wordPrefixes.ru,
-  ...antiBullyingDictionary.wordPrefixes.en,
-].map((prefix) => new RegExp(`(^|\\s)${escapeRegex(prefix)}[\\p{L}\\p{N}]*(\\s|$)`, "u"));
+const normalizeForLocale = (text, locale) => {
+  const base = normalizeBase(text);
+
+  if (locale === "ru") {
+    return mapLookalikes(base, LATIN_TO_CYRILLIC);
+  }
+
+  if (locale === "en") {
+    return mapLookalikes(base, CYRILLIC_TO_LATIN);
+  }
+
+  return base;
+};
+
+const uniqueNormalizedEntries = (entries, locale) =>
+  Array.from(
+    new Set(entries.map((entry) => normalizeForLocale(entry, locale)).filter(Boolean))
+  );
+
+const compilePhrasePatterns = (entries, locale) =>
+  uniqueNormalizedEntries(entries, locale).map(
+    (entry) => new RegExp(`(^|\\s)${escapeRegex(entry)}(\\s|$)`, "u")
+  );
+
+const compilePrefixPatterns = (entries, locale) =>
+  uniqueNormalizedEntries(entries, locale).map(
+    (entry) => new RegExp(`(^|\\s)${escapeRegex(entry)}[\\p{L}\\p{N}]*(\\s|$)`, "u")
+  );
+
+const ruPhrasePatterns = compilePhrasePatterns(antiBullyingDictionary.phrases.ru, "ru");
+const enPhrasePatterns = compilePhrasePatterns(antiBullyingDictionary.phrases.en, "en");
+const ruPrefixPatterns = compilePrefixPatterns(antiBullyingDictionary.wordPrefixes.ru, "ru");
+const enPrefixPatterns = compilePrefixPatterns(antiBullyingDictionary.wordPrefixes.en, "en");
 
 export function containsAbusiveLanguage(text) {
-  const normalizedText = normalizeForModeration(text);
+  const normalizedRu = normalizeForLocale(text, "ru");
+  const normalizedEn = normalizeForLocale(text, "en");
 
-  if (!normalizedText) {
+  if (!normalizedRu && !normalizedEn) {
     return false;
   }
 
   return (
-    phrasePatterns.some((pattern) => pattern.test(normalizedText)) ||
-    wordPrefixPatterns.some((pattern) => pattern.test(normalizedText))
+    ruPhrasePatterns.some((pattern) => pattern.test(normalizedRu)) ||
+    enPhrasePatterns.some((pattern) => pattern.test(normalizedEn)) ||
+    ruPrefixPatterns.some((pattern) => pattern.test(normalizedRu)) ||
+    enPrefixPatterns.some((pattern) => pattern.test(normalizedEn))
   );
 }
 
 export function normalizeMessageForModeration(text) {
-  return normalizeForModeration(text);
+  return normalizeBase(text);
 }
