@@ -1291,11 +1291,12 @@ body::after {
 }
 
 .chat-peer__flag {
-  width: 24px;
-  height: 16px;
-  border-radius: 3px;
-  object-fit: contain;
-  background: rgba(255, 255, 255, 0.72);
+  width: 28px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: fill;
+  display: block;
+  background: transparent;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
 }
@@ -1838,10 +1839,12 @@ body::after {
 }
 
 .mychats-item__flag {
-  width: 22px;
-  height: 15px;
-  border-radius: 3px;
-  object-fit: cover;
+  width: 28px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: fill;
+  display: block;
+  background: transparent;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
 }
@@ -2404,21 +2407,23 @@ body::after {
 
 /* Флаги стран */
 .country-flag {
-  width: 32px;
-  height: 22px;
+  width: 28px;
+  height: 18px;
   border-radius: 4px;
-  object-fit: contain;
-  background: rgba(255, 255, 255, 0.72);
+  object-fit: fill;
+  display: block;
+  background: transparent;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
 }
 
 .country-flag-icon {
-  width: 24px;
-  height: 16px;
-  border-radius: 3px;
-  object-fit: contain;
-  background: rgba(255, 255, 255, 0.72);
+  width: 28px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: fill;
+  display: block;
+  background: transparent;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   flex-shrink: 0;
   margin-right: 8px;
@@ -2511,6 +2516,79 @@ body::after {
     margin: -2px -2px 0;
     padding: 2px 2px 14px;
     box-shadow: 0 10px 18px rgba(94, 66, 33, 0.06);
+  }
+
+  body.chat-route-lock {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: var(--chat-visual-height, 100dvh);
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+
+  body.chat-route-lock #root {
+    height: var(--chat-visual-height, 100dvh);
+    overflow: hidden;
+  }
+
+  body.chat-route-lock .chat-app {
+    position: fixed;
+    top: var(--chat-visual-offset-top, 0px);
+    left: 0;
+    right: 0;
+    width: 100vw;
+    max-width: 100vw;
+    min-width: 100vw;
+    height: var(--chat-visual-height, 100dvh);
+    min-height: var(--chat-visual-height, 100dvh);
+    max-height: var(--chat-visual-height, 100dvh);
+    padding:
+      calc(10px + env(safe-area-inset-top))
+      12px
+      max(10px, env(safe-area-inset-bottom));
+    gap: 0;
+    overflow: hidden;
+  }
+
+  body.chat-route-lock .page-viewport,
+  body.chat-route-lock .chat-page {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body.chat-route-lock .chat-page {
+    padding: 0;
+  }
+
+  body.chat-route-lock .chat-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0;
+    padding: 10px 10px 12px;
+    border-radius: 24px 24px 16px 16px;
+    background:
+      linear-gradient(180deg, rgba(254, 249, 237, 0.98) 0%, rgba(254, 249, 237, 0.94) 100%),
+      var(--bg-card-inner);
+    border-bottom: 1px solid rgba(180, 140, 80, 0.24);
+    box-shadow: 0 12px 22px rgba(94, 66, 33, 0.08);
+    backdrop-filter: blur(10px);
+  }
+
+  body.chat-route-lock .chat-messages {
+    flex: 1 1 auto;
+    padding: 12px 8px 10px;
+  }
+
+  body.chat-route-lock .chat-input {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    margin-top: 8px;
+    box-shadow: 0 -10px 24px rgba(94, 66, 33, 0.08);
   }
 }
 
@@ -2616,7 +2694,7 @@ body::after {
 
   .country-flag {
     width: 28px;
-    height: 20px;
+    height: 18px;
   }
 
   .tooltip {
@@ -2730,7 +2808,7 @@ body::after {
   }
 
   .country-flag {
-    width: 26px;
+    width: 28px;
     height: 18px;
   }
 
@@ -2755,13 +2833,13 @@ body::after {
   }
 
   .chat-peer__flag {
-    width: 20px;
-    height: 14px;
+    width: 28px;
+    height: 18px;
   }
 
   .mychats-item__flag {
-    width: 18px;
-    height: 13px;
+    width: 28px;
+    height: 18px;
   }
 
   .story-like,

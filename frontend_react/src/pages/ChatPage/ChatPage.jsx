@@ -60,13 +60,8 @@ export default function ChatPage() {
   const handlePeerDisconnected = useCallback(
     (payload) => {
       console.log("Peer disconnected:", payload);
-      setChats((prev) =>
-        prev.map((c) =>
-          c.id === id ? { ...c, ended: true, endedAt: Date.now() } : c
-        )
-      );
     },
-    [id, setChats]
+    []
   );
 
   const handlePeerChatEnded = useCallback(() => {
@@ -174,6 +169,40 @@ export default function ChatPage() {
     }
   }, [chat, id, setChats]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const body = document.body;
+    const viewport = window.visualViewport;
+
+    const syncChatViewport = () => {
+      const height = viewport?.height || window.innerHeight;
+      const offsetTop = viewport?.offsetTop || 0;
+
+      root.style.setProperty("--chat-visual-height", `${height}px`);
+      root.style.setProperty("--chat-visual-offset-top", `${offsetTop}px`);
+
+      if (document.activeElement?.tagName === "INPUT") {
+        window.scrollTo(0, 0);
+      }
+    };
+
+    body.classList.add("chat-route-lock");
+    syncChatViewport();
+
+    viewport?.addEventListener("resize", syncChatViewport);
+    viewport?.addEventListener("scroll", syncChatViewport);
+    window.addEventListener("resize", syncChatViewport);
+
+    return () => {
+      body.classList.remove("chat-route-lock");
+      root.style.removeProperty("--chat-visual-height");
+      root.style.removeProperty("--chat-visual-offset-top");
+      viewport?.removeEventListener("resize", syncChatViewport);
+      viewport?.removeEventListener("scroll", syncChatViewport);
+      window.removeEventListener("resize", syncChatViewport);
+    };
+  }, []);
+
   const updateChatMessages = (newMessages) => {
     setChats((prev) =>
       prev.map((c) => (c.id === id ? { ...c, messages: newMessages } : c))
@@ -234,11 +263,11 @@ export default function ChatPage() {
     if (!chat) return;
 
     if (wsService.isConnected()) {
-      wsService.endChat();
+      wsService.endChat(id);
     } else {
       const reconnected = await wsService.ensureConnected();
       if (reconnected) {
-        wsService.endChat();
+        wsService.endChat(id);
       }
     }
 
@@ -351,6 +380,14 @@ export default function ChatPage() {
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onFocus={() => {
+              window.setTimeout(() => {
+                window.scrollTo(0, 0);
+                if (listRef.current) {
+                  listRef.current.scrollTop = listRef.current.scrollHeight;
+                }
+              }, 120);
+            }}
             placeholder={t("chat_placeholder")}
             onKeyDown={(e) => {
               if (e.key === "Enter") send();

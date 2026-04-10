@@ -98,17 +98,11 @@ func (h *Hub) Run() {
 				close(client.Send)
 
 				h.matchingService.RemoveFromQueue(userID)
-
-				if chatID != "" {
-					if peerID, ok := h.matchingService.GetPeerIDNoLock(chatID, userID); ok {
-						h.notifyPeerDisconnectedLocked(peerID)
-					}
-				}
 			}
 			h.mu.Unlock()
 
 			if chatID != "" {
-				h.matchingService.EndSession(chatID)
+				log.Printf("Client %s disconnected from active chat %s without ending it", client.ID, chatID)
 			}
 
 			log.Printf("Client unregistered: %s", client.ID)
@@ -366,7 +360,7 @@ func (c *Client) handleMessage(message []byte) {
 	case "chat_message":
 		c.handleChatMessage(wsMsg.Payload)
 	case "end_chat":
-		c.handleEndChat()
+		c.handleEndChat(wsMsg.Payload)
 	default:
 		log.Printf("Unknown message type: %s", wsMsg.Type)
 		c.sendError("Unknown message type")
@@ -409,10 +403,9 @@ func (c *Client) handleMatchRequest(payload interface{}) {
 		return
 	}
 
-	// Для матчинга и доставки сообщений нужен ID конкретного WebSocket-клиента,
-	// а не persistent userId из localStorage. Иначе несколько вкладок одного
-	// браузера перетирают друг друга в очереди и часть пользователей ищет вечно.
-	req.UserID = c.ID
+	if req.UserID == "" {
+		req.UserID = c.ID
+	}
 	c.SetUserData(req)
 
 	responseChan := c.Hub.matchingService.AddToQueue(req)
@@ -546,9 +539,30 @@ func (c *Client) handleChatMessage(payload interface{}) {
 	log.Printf("Message forwarded successfully to peer %s", peerID)
 }
 
-func (c *Client) handleEndChat() {
+func (c *Client) handleEndChat(payload interface{}) {
 	chatID := c.GetChatID()
 	log.Printf("handleEndChat called for client %s, ChatID: %s", c.ID, chatID)
+
+	if chatID == "" {
+		data, err := json.Marshal(payload)
+		if err == nil {
+			var endPayload struct {
+				ChatID string `json:"chatId"`
+				UserID string `json:"userId"`
+			}
+			if err := json.Unmarshal(data, &endPayload); err == nil {
+				if endPayload.UserID != "" {
+					ud := c.GetUserData()
+					ud.UserID = endPayload.UserID
+					c.SetUserData(ud)
+				}
+				if endPayload.ChatID != "" {
+					chatID = endPayload.ChatID
+					c.SetChatID(chatID)
+				}
+			}
+		}
+	}
 
 	if chatID == "" {
 		log.Printf("Client %s has no active chat to end", c.ID)

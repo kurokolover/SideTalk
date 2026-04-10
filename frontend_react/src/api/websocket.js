@@ -1,6 +1,13 @@
 import { BACKEND_URL } from './config';
 import userService from './userService';
 
+const WS_SESSION_STORAGE_KEY = 'sidetalk_ws_session_id';
+
+const generateWsSessionId = () => {
+  const randomPart = Math.random().toString(36).slice(2, 10);
+  return `ws-${Date.now()}-${randomPart}`;
+};
+
 class WebSocketService {
   constructor() {
     this.ws = null;
@@ -12,6 +19,7 @@ class WebSocketService {
     this.pendingMessages = [];
     this.connectionPromise = null;
     this.userId = null;
+    this.wsSessionId = null;
   }
 
   getUserId() {
@@ -19,6 +27,26 @@ class WebSocketService {
       this.userId = userService.getUserId();
     }
     return this.userId;
+  }
+
+  getWsSessionId() {
+    if (this.wsSessionId) {
+      return this.wsSessionId;
+    }
+
+    try {
+      const storedId = sessionStorage.getItem(WS_SESSION_STORAGE_KEY);
+      if (storedId) {
+        this.wsSessionId = storedId;
+      } else {
+        this.wsSessionId = generateWsSessionId();
+        sessionStorage.setItem(WS_SESSION_STORAGE_KEY, this.wsSessionId);
+      }
+    } catch (error) {
+      this.wsSessionId = this.wsSessionId || generateWsSessionId();
+    }
+
+    return this.wsSessionId;
   }
 
   connect() {
@@ -214,7 +242,7 @@ class WebSocketService {
   }
 
   sendUserIdentification() {
-    const userId = this.getUserId();
+    const userId = this.getWsSessionId();
     console.log('Sending user identification:', userId);
     this.send('user_identify', { userId });
   }
@@ -222,7 +250,7 @@ class WebSocketService {
   requestMatch(matchRequest) {
     const requestWithUserId = {
       ...matchRequest,
-      userId: this.getUserId(),
+      userId: this.getWsSessionId(),
     };
     if (!this.send('match_request', requestWithUserId)) {
       console.error('Failed to send match request - WebSocket not connected');
@@ -232,7 +260,7 @@ class WebSocketService {
   sendMessage(chatMessage) {
     const messageWithUserId = {
       ...chatMessage,
-      userId: this.getUserId(),
+      userId: this.getWsSessionId(),
     };
     if (!this.send('chat_message', messageWithUserId, true)) {
       console.error('Failed to send message - WebSocket not connected, message queued');
@@ -241,8 +269,8 @@ class WebSocketService {
     return true;
   }
 
-  endChat() {
-    if (!this.send('end_chat', {}, true)) {
+  endChat(chatId) {
+    if (!this.send('end_chat', { chatId, userId: this.getWsSessionId() }, true)) {
       console.error('Failed to send end chat - WebSocket not connected, queued');
     }
   }
