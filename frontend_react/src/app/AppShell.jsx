@@ -20,7 +20,7 @@ export default function AppShell({ children }) {
   // язык можно менять только на главной и в ленте историй
   const showLanguage = isHomeRoute || isStoriesRoute;
 
-  // выбор аватара — только на главной странице
+  // выбор аватара только на главной странице
   const showAvatar = isHomeRoute;
 
   // панелька

@@ -25,7 +25,7 @@ export default function SearchingPage() {
 
   const [seconds, setSeconds] = useState(0);
   const createdRef = useRef(false);
-  const wsConnectedRef = useRef(false);
+  const matchRequestedRef = useRef(false);
   const showFiltersHint = seconds >= 60;
 
   const peerAvatar = useMemo(() => {
@@ -50,18 +50,19 @@ export default function SearchingPage() {
   }, []);
 
   useEffect(() => {
-    if (createdRef.current || wsConnectedRef.current) return;
+    let cancelled = false;
+
+    wsService.on('match_found', handleMatchFound);
+    wsService.on('error', handleError);
+    wsService.on('connection_failed', handleConnectionFailed);
 
     const initWebSocket = async () => {
       try {
         // Connect to WebSocket
         await wsService.connect();
-        wsConnectedRef.current = true;
-
-        // Set up event listeners
-        wsService.on('match_found', handleMatchFound);
-        wsService.on('error', handleError);
-        wsService.on('connection_failed', handleConnectionFailed);
+        if (cancelled || createdRef.current || matchRequestedRef.current) {
+          return;
+        }
 
         // Get selected country name (string from array)
         const countries = dict.countries || [];
@@ -83,6 +84,7 @@ export default function SearchingPage() {
 
         console.log('Sending match request:', matchRequest);
         wsService.requestMatch(matchRequest);
+        matchRequestedRef.current = true;
       } catch (error) {
         console.error('WebSocket connection error:', error);
       }
@@ -92,6 +94,7 @@ export default function SearchingPage() {
 
     // Cleanup on unmount
     return () => {
+      cancelled = true;
       wsService.off('match_found', handleMatchFound);
       wsService.off('error', handleError);
       wsService.off('connection_failed', handleConnectionFailed);

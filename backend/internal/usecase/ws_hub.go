@@ -409,9 +409,10 @@ func (c *Client) handleMatchRequest(payload interface{}) {
 		return
 	}
 
-	if req.UserID == "" {
-		req.UserID = c.ID
-	}
+	// Для матчинга и доставки сообщений нужен ID конкретного WebSocket-клиента,
+	// а не persistent userId из localStorage. Иначе несколько вкладок одного
+	// браузера перетирают друг друга в очереди и часть пользователей ищет вечно.
+	req.UserID = c.ID
 	c.SetUserData(req)
 
 	responseChan := c.Hub.matchingService.AddToQueue(req)

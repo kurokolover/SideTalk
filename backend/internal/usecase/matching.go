@@ -176,19 +176,31 @@ func (s *MatchingService) isCompatible(req1, req2 domain.MatchRequest) bool {
 }
 
 func (s *MatchingService) matchesFilters(filters1, filters2 domain.UserFilters) bool {
-	if filters1.PeerAge != "any" {
-		if filters1.PeerAge != filters2.MyAge {
+	peerAge := normalizeFilterValue(filters1.PeerAge)
+	myAge := normalizeFilterValue(filters2.MyAge)
+	peerGender := normalizeFilterValue(filters1.PeerGender)
+	myGender := normalizeFilterValue(filters2.MyGender)
+
+	if peerAge != "any" && myAge != "any" {
+		if peerAge != myAge {
 			return false
 		}
 	}
 
-	if filters1.PeerGender != "any" {
-		if filters1.PeerGender != filters2.MyGender {
+	if peerGender != "any" && myGender != "any" {
+		if peerGender != myGender {
 			return false
 		}
 	}
 
 	return true
+}
+
+func normalizeFilterValue(value string) string {
+	if value == "" {
+		return "any"
+	}
+	return value
 }
 
 func (s *MatchingService) createSession(user1ID, user2ID string, antiBullying bool) *domain.ChatSession {
