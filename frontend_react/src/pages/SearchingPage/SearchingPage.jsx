@@ -190,7 +190,19 @@ export default function SearchingPage() {
 
         {showFiltersHint && (
           <p className="searching-filters-hint">
-            {t("searching_filters_hint")}
+            <span className="searching-filters-hint__eye" aria-hidden="true">
+              <img
+                className="searching-filters-hint__eye-open"
+                src="/icons/eye-light.svg"
+                alt=""
+              />
+              <img
+                className="searching-filters-hint__eye-closed"
+                src="/icons/eye-closed-light.svg"
+                alt=""
+              />
+            </span>
+            <span>{t("searching_filters_hint")}</span>
           </p>
         )}
       </div>

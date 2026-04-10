@@ -1091,24 +1091,59 @@ body::after {
   font-weight: 800;
   line-height: 1.35;
   letter-spacing: 0.03em;
-  color: #b22d45;
+  color: #a94735;
   text-align: center;
   text-shadow:
-    0 2px 10px rgba(178, 45, 69, 0.2),
-    0 0 14px rgba(178, 45, 69, 0.12);
+    0 2px 10px rgba(122, 69, 24, 0.12),
+    0 0 14px rgba(169, 71, 53, 0.1);
   animation:
     searchingHintFadeIn 0.45s ease-out,
-    searchingHintPulse 2.8s ease-in-out 0.45s infinite;
+    searchingHintPulse 3.6s ease-in-out 0.45s infinite;
 }
 
-.searching-filters-hint::before {
-  content: "⚠";
-  font-size: 16px;
-  line-height: 1;
-  color: #cf2846;
-  text-shadow:
-    0 2px 12px rgba(207, 40, 70, 0.24),
-    0 0 12px rgba(207, 40, 70, 0.14);
+.searching-filters-hint::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: min(190px, 72%);
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(169, 71, 53, 0.46), transparent);
+  transform: translateX(-50%);
+}
+
+.searching-filters-hint__eye {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  filter:
+    drop-shadow(0 2px 7px rgba(122, 69, 24, 0.2))
+    drop-shadow(0 0 8px rgba(169, 71, 53, 0.14));
+  opacity: 0.86;
+  animation: searchingEyeFloat 2.4s ease-in-out infinite;
+}
+
+.searching-filters-hint__eye img {
+  position: absolute;
+  inset: 0;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  transform-origin: center;
+  filter: sepia(0.75) saturate(0.72) hue-rotate(325deg) brightness(0.74);
+}
+
+.searching-filters-hint__eye-open {
+  animation: searchingEyeOpen 2.8s steps(1, end) infinite;
+}
+
+.searching-filters-hint__eye-closed {
+  animation: searchingEyeClosed 2.8s steps(1, end) infinite;
 }
 
 @keyframes searchingHintFadeIn {
@@ -1126,14 +1161,60 @@ body::after {
   0%, 100% {
     transform: translateY(0);
     text-shadow:
-      0 2px 10px rgba(178, 45, 69, 0.2),
-      0 0 14px rgba(178, 45, 69, 0.12);
+      0 2px 10px rgba(122, 69, 24, 0.12),
+      0 0 14px rgba(169, 71, 53, 0.1);
   }
   50% {
     transform: translateY(-1px);
     text-shadow:
-      0 4px 16px rgba(178, 45, 69, 0.28),
-      0 0 20px rgba(178, 45, 69, 0.16);
+      0 4px 16px rgba(122, 69, 24, 0.18),
+      0 0 18px rgba(169, 71, 53, 0.14);
+  }
+}
+
+@keyframes searchingEyeFloat {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    transform: translateY(-1px) scale(1.04);
+  }
+  58% {
+    transform: translateY(0) scale(0.97);
+  }
+}
+
+@keyframes searchingEyeOpen {
+  0%, 68%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  69%, 78% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  79%, 87% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  88%, 93% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  94% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes searchingEyeClosed {
+  0%, 68%, 79%, 87%, 94%, 100% {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  69%, 78%, 88%, 93% {
+    opacity: 1;
+    transform: scale(1.02);
   }
 }
 
@@ -1141,20 +1222,27 @@ body::after {
 .chat-page {
   padding-bottom: 14px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chat-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding-bottom: 14px;
+  padding: 0 0 14px;
   margin-bottom: 0;
+  background: var(--bg-card-inner);
   border-bottom: 1px solid rgba(180, 140, 80, 0.2);
 }
 
 /* плашка анти буллинга в чате */
 .chat-antibullying-banner {
+  flex: 0 0 auto;
   background: linear-gradient(135deg, rgba(255, 180, 150, 0.35) 0%, rgba(220, 120, 100, 0.3) 50%, rgba(200, 100, 80, 0.25) 100%);
   border: 1px solid rgba(200, 100, 80, 0.4);
   border-radius: 8px;
@@ -1361,6 +1449,7 @@ body::after {
 }
 
 .chat-input {
+  flex: 0 0 auto;
   margin-top: 12px;
   display: flex;
   align-items: center;
@@ -2389,6 +2478,7 @@ body::after {
   body {
     align-items: flex-start;
     padding: 0;
+    overflow: hidden;
   }
 
   .chat-app {
@@ -2411,6 +2501,13 @@ body::after {
 
   .screen-full {
     padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .chat-header {
+    top: 0;
+    margin: -2px -2px 0;
+    padding: 2px 2px 14px;
+    box-shadow: 0 10px 18px rgba(94, 66, 33, 0.06);
   }
 }
 

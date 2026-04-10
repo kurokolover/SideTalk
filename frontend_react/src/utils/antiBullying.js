@@ -1,6 +1,12 @@
 import { antiBullyingDictionary } from "../shared/banwords.js";
 
 const LATIN_TO_CYRILLIC = {
+  0: "о",
+  1: "и",
+  3: "з",
+  4: "ч",
+  6: "б",
+  9: "я",
   a: "а",
   b: "в",
   c: "с",
@@ -16,6 +22,12 @@ const LATIN_TO_CYRILLIC = {
 };
 
 const CYRILLIC_TO_LATIN = {
+  0: "o",
+  1: "i",
+  3: "z",
+  4: "ch",
+  6: "b",
+  9: "ya",
   а: "a",
   в: "b",
   с: "c",

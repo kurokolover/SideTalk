@@ -8,6 +8,12 @@ import (
 var moderationCleanupPattern = regexp.MustCompile(`[^\p{L}\p{N}\s]+`)
 
 var latinToCyrillicLookalikes = strings.NewReplacer(
+	"0", "о",
+	"1", "и",
+	"3", "з",
+	"4", "ч",
+	"6", "б",
+	"9", "я",
 	"a", "а",
 	"b", "в",
 	"c", "с",
@@ -23,6 +29,12 @@ var latinToCyrillicLookalikes = strings.NewReplacer(
 )
 
 var cyrillicToLatinLookalikes = strings.NewReplacer(
+	"0", "o",
+	"1", "i",
+	"3", "z",
+	"4", "ch",
+	"6", "b",
+	"9", "ya",
 	"а", "a",
 	"в", "b",
 	"с", "c",
