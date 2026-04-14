@@ -8,6 +8,23 @@ const generateWsSessionId = () => {
   return `ws-${Date.now()}-${randomPart}`;
 };
 
+const toWebSocketBaseUrl = (httpUrl) => {
+  if (!httpUrl) {
+    return '';
+  }
+
+  try {
+    const parsed = new URL(httpUrl, window.location.origin);
+    parsed.protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+    parsed.pathname = '';
+    parsed.search = '';
+    parsed.hash = '';
+    return parsed.toString().replace(/\/$/, '');
+  } catch (error) {
+    return '';
+  }
+};
+
 class WebSocketService {
   constructor() {
     this.ws = null;
@@ -49,6 +66,32 @@ class WebSocketService {
     return this.wsSessionId;
   }
 
+  getWebSocketUrls() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const urls = [];
+    const seen = new Set();
+
+    const addUrl = (url) => {
+      if (!url || seen.has(url)) {
+        return;
+      }
+      seen.add(url);
+      urls.push(url);
+    };
+
+    if (BACKEND_URL) {
+      addUrl(`${toWebSocketBaseUrl(BACKEND_URL)}/ws`);
+    }
+
+    addUrl(`${protocol}//${window.location.host}/ws`);
+
+    if (window.location.port && window.location.port !== '8080') {
+      addUrl(`${protocol}//${window.location.hostname}:8080/ws`);
+    }
+
+    return urls;
+  }
+
   connect() {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
@@ -85,31 +128,32 @@ class WebSocketService {
     }
 
     this.connectionPromise = new Promise((resolve, reject) => {
-      try {
-        // Use relative WebSocket URL - nginx will proxy to backend
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
-        console.log('Connecting to WebSocket:', wsUrl);
-        this.ws = new WebSocket(wsUrl);
+      const wsUrls = this.getWebSocketUrls();
+      let resolved = false;
+      let attemptIndex = 0;
+
+      const handleSocketOpen = () => {
+        console.log('WebSocket connected successfully');
+        this.reconnectAttempts = 0;
+        this.connectionPromise = null;
+
+        this.sendUserIdentification();
+
+        this.notifyListeners('connected', { userId: this.getUserId() });
+
+        this.flushPendingMessages();
+
+        resolved = true;
+        resolve();
+      };
+
+      const attachSocketHandlers = (socket) => {
+        this.ws = socket;
         this.isIntentionallyClosed = false;
 
-        this.ws.onopen = () => {
-          console.log('WebSocket connected successfully');
-          this.reconnectAttempts = 0;
-          this.connectionPromise = null;
-
-          this.sendUserIdentification();
-
-          this.notifyListeners('connected', { userId: this.getUserId() });
-
-          this.flushPendingMessages();
-
-          resolve();
-        };
-
-        this.ws.onmessage = (event) => {
+        socket.onmessage = (event) => {
           try {
-            const messages = event.data.split('\n').filter(m => m.trim());
+            const messages = String(event.data).split('\n').filter(m => m.trim());
             messages.forEach(msgStr => {
               try {
                 const message = JSON.parse(msgStr);
@@ -123,14 +167,16 @@ class WebSocketService {
           }
         };
 
-        this.ws.onerror = (error) => {
+        socket.onerror = (error) => {
           console.error('WebSocket error:', error);
-          this.connectionPromise = null;
+          if (!resolved) {
+            return;
+          }
+
           this.notifyListeners('error', { message: 'WebSocket connection error' });
-          reject(error);
         };
 
-        this.ws.onclose = (event) => {
+        socket.onclose = (event) => {
           console.log('WebSocket disconnected', event.code, event.reason);
           this.connectionPromise = null;
           this.notifyListeners('disconnected', { code: event.code, reason: event.reason });
@@ -138,6 +184,53 @@ class WebSocketService {
             this.attemptReconnect();
           }
         };
+      };
+
+      const tryConnect = () => {
+        if (attemptIndex >= wsUrls.length) {
+          this.connectionPromise = null;
+          reject(new Error('WebSocket connection failed for all configured URLs'));
+          return;
+        }
+
+        const wsUrl = wsUrls[attemptIndex++];
+
+        try {
+          console.log('Connecting to WebSocket:', wsUrl);
+          const socket = new WebSocket(wsUrl);
+          let opened = false;
+          let advanced = false;
+
+          const advanceToNextCandidate = () => {
+            if (advanced || opened) {
+              return;
+            }
+            advanced = true;
+            tryConnect();
+          };
+
+          socket.onopen = () => {
+            opened = true;
+            attachSocketHandlers(socket);
+            handleSocketOpen();
+          };
+
+          socket.onerror = (error) => {
+            console.error('WebSocket candidate error:', wsUrl, error);
+            advanceToNextCandidate();
+          };
+
+          socket.onclose = () => {
+            advanceToNextCandidate();
+          };
+        } catch (error) {
+          console.error('Failed to create WebSocket candidate:', wsUrl, error);
+          tryConnect();
+        }
+      };
+
+      try {
+        tryConnect();
       } catch (error) {
         this.connectionPromise = null;
         reject(error);
