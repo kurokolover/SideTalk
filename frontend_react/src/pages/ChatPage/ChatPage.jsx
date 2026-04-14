@@ -21,6 +21,7 @@ export default function ChatPage() {
   const [connectionStatus, setConnectionStatus] = useState("checking");
   const [peerEndedModalOpen, setPeerEndedModalOpen] = useState(false);
   const listRef = useRef(null);
+  const keyboardSettleTimeoutRef = useRef(null);
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -175,35 +176,40 @@ export default function ChatPage() {
     const viewport = window.visualViewport;
     let frameId = 0;
 
-    const keepChatAnchored = () => {
+    const pinChatToBottom = () => {
       if (document.activeElement?.tagName !== "INPUT") {
         return;
       }
 
       window.scrollTo(0, 0);
       if (listRef.current) {
-        listRef.current.scrollTo({
-          top: listRef.current.scrollHeight,
-          behavior: "smooth",
-        });
+        listRef.current.scrollTop = listRef.current.scrollHeight;
       }
     };
 
-    const syncChatViewport = () => {
+    const applyViewportState = () => {
       const height = viewport?.height || window.innerHeight;
       const offsetTop = viewport?.offsetTop || 0;
+      const viewportScale = viewport?.scale || 1;
+      const isZoomed = viewportScale > 1.01;
       const keyboardInset = Math.max(0, window.innerHeight - height - offsetTop);
-      const keyboardOpen = keyboardInset > 120;
+      const keyboardOpen = !isZoomed && keyboardInset > 120;
 
       root.style.setProperty("--chat-visual-height", `${height}px`);
       root.style.setProperty("--chat-visual-offset-top", `${offsetTop}px`);
       root.style.setProperty("--chat-keyboard-inset", `${keyboardInset}px`);
+      root.style.setProperty("--chat-viewport-scale", `${viewportScale}`);
       body.classList.toggle("chat-route-lock--keyboard", keyboardOpen);
+      body.classList.toggle("chat-route-lock--zoomed", isZoomed);
 
-      if (document.activeElement?.tagName === "INPUT") {
-        cancelAnimationFrame(frameId);
-        frameId = window.requestAnimationFrame(keepChatAnchored);
+      if (!isZoomed && document.activeElement?.tagName === "INPUT") {
+        pinChatToBottom();
       }
+    };
+
+    const syncChatViewport = () => {
+      cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(applyViewportState);
     };
 
     body.classList.add("chat-route-lock");
@@ -215,11 +221,15 @@ export default function ChatPage() {
 
     return () => {
       cancelAnimationFrame(frameId);
+      window.clearTimeout(keyboardSettleTimeoutRef.current);
       body.classList.remove("chat-route-lock");
       body.classList.remove("chat-route-lock--keyboard");
+      body.classList.remove("chat-route-lock--input-focused");
+      body.classList.remove("chat-route-lock--zoomed");
       root.style.removeProperty("--chat-visual-height");
       root.style.removeProperty("--chat-visual-offset-top");
       root.style.removeProperty("--chat-keyboard-inset");
+      root.style.removeProperty("--chat-viewport-scale");
       viewport?.removeEventListener("resize", syncChatViewport);
       viewport?.removeEventListener("scroll", syncChatViewport);
       window.removeEventListener("resize", syncChatViewport);
@@ -404,7 +414,16 @@ export default function ChatPage() {
             value={text}
             onChange={(e) => setText(e.target.value)}
             onFocus={() => {
+              document.body.classList.add("chat-route-lock--input-focused");
+              window.clearTimeout(keyboardSettleTimeoutRef.current);
               window.setTimeout(() => {
+                window.scrollTo(0, 0);
+                if (listRef.current) {
+                  listRef.current.scrollTop = listRef.current.scrollHeight;
+                }
+              }, 40);
+
+              keyboardSettleTimeoutRef.current = window.setTimeout(() => {
                 window.scrollTo(0, 0);
                 if (listRef.current) {
                   listRef.current.scrollTo({
@@ -412,7 +431,11 @@ export default function ChatPage() {
                     behavior: "smooth",
                   });
                 }
-              }, 140);
+              }, 220);
+            }}
+            onBlur={() => {
+              document.body.classList.remove("chat-route-lock--input-focused");
+              window.clearTimeout(keyboardSettleTimeoutRef.current);
             }}
             placeholder={t("chat_placeholder")}
             onKeyDown={(e) => {

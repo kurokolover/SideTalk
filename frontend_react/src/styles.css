@@ -2542,7 +2542,7 @@ body::after {
 
   body.chat-route-lock .chat-app {
     position: fixed;
-    top: var(--chat-visual-offset-top, 0px);
+    top: 0;
     left: 0;
     right: 0;
     width: 100vw;
@@ -2557,12 +2557,8 @@ body::after {
       max(10px, env(safe-area-inset-bottom));
     gap: 0;
     overflow: hidden;
-    transition:
-      top 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      min-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
-      padding 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: translate3d(0, var(--chat-visual-offset-top, 0px), 0);
+    will-change: height, transform;
   }
 
   body.chat-route-lock .page-viewport,
@@ -2570,7 +2566,6 @@ body::after {
     min-height: 0;
     height: 100%;
     overflow: hidden;
-    transition: padding 0.24s ease, transform 0.24s ease;
   }
 
   body.chat-route-lock .chat-page {
@@ -2591,17 +2586,17 @@ body::after {
     box-shadow: 0 12px 22px rgba(94, 66, 33, 0.08);
     backdrop-filter: blur(10px);
     transition:
-      padding 0.24s ease,
-      border-radius 0.24s ease,
-      box-shadow 0.24s ease,
-      background 0.24s ease,
-      transform 0.24s ease;
+      padding 0.18s ease,
+      border-radius 0.18s ease,
+      box-shadow 0.18s ease,
+      background 0.18s ease;
   }
 
   body.chat-route-lock .chat-messages {
     flex: 1 1 auto;
     padding: 12px 8px 10px;
-    transition: padding 0.24s ease;
+    scroll-behavior: auto;
+    transition: padding 0.18s ease;
   }
 
   body.chat-route-lock .chat-input {
@@ -2611,15 +2606,15 @@ body::after {
     margin-top: 8px;
     box-shadow: 0 -10px 24px rgba(94, 66, 33, 0.08);
     transition:
-      transform 0.24s ease,
-      margin-top 0.24s ease,
-      box-shadow 0.24s ease,
-      border-color 0.24s ease,
-      background 0.24s ease;
+      transform 0.18s ease,
+      margin-top 0.18s ease,
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      background 0.18s ease;
   }
 
   body.chat-route-lock .chat-antibullying-banner {
-    transition: margin 0.24s ease, opacity 0.24s ease, transform 0.24s ease;
+    transition: margin 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
   }
 
   body.chat-route-lock--keyboard .chat-app {
@@ -2647,10 +2642,62 @@ body::after {
 
   body.chat-route-lock--keyboard .chat-input {
     margin-top: 6px;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     background: rgba(239, 230, 206, 0.98);
     border-color: rgba(94, 66, 33, 0.3);
     box-shadow: 0 -8px 20px rgba(94, 66, 33, 0.07);
+  }
+
+  body.chat-route-lock--input-focused .chat-input {
+    box-shadow: 0 -12px 28px rgba(94, 66, 33, 0.1);
+  }
+
+  body.chat-route-lock--zoomed .chat-app,
+  body.chat-route-lock--zoomed .page-viewport,
+  body.chat-route-lock--zoomed .chat-page,
+  body.chat-route-lock--zoomed .chat-header,
+  body.chat-route-lock--zoomed .chat-messages,
+  body.chat-route-lock--zoomed .chat-input,
+  body.chat-route-lock--zoomed .chat-antibullying-banner {
+    transition: none;
+  }
+}
+
+/* Телефоны */
+@media screen and (max-width: 767px) {
+  html,
+  body {
+    background: var(--bg-card-inner);
+    justify-content: flex-start;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+
+  body::before,
+  body::after {
+    display: none;
+  }
+
+  #root {
+    justify-content: stretch;
+  }
+
+  .chat-app {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    max-width: 100vw;
+    min-width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    min-height: 100vh;
+    min-height: 100dvh;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    margin: 0;
+    touch-action: pan-x pan-y pinch-zoom;
   }
 }
 
@@ -2771,8 +2818,14 @@ body::after {
     font-size: 14px;
   }
 
+  .chat-bubble__footer {
+    gap: 8px;
+    margin-top: 5px;
+  }
+
   .chat-bubble__time {
     font-size: 10px;
+    transform: translate(2px, -1px);
   }
 
   .chat-bubble__status {
@@ -2886,8 +2939,14 @@ body::after {
     font-size: 13px;
   }
 
+  .chat-bubble__footer {
+    gap: 7px;
+    margin-top: 4px;
+  }
+
   .chat-bubble__time {
     font-size: 8px;
+    transform: translate(2px, -1px);
   }
 
   .chat-bubble__status {
