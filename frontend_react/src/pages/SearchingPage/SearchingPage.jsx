@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { avatarFiles } from "../../shared/i18n";
@@ -41,42 +41,6 @@ export default function SearchingPage() {
     return countries[randomIndex];
   }, [dict.countries]);
 
-  const sendMatchRequest = useCallback(() => {
-    if (createdRef.current) {
-      return;
-    }
-
-    const countries = dict.countries || [];
-    const selectedCountryName =
-      geoEnabled && selectedCountryIndex != null && selectedCountryIndex >= 0
-        ? countries[selectedCountryIndex] || ""
-        : "";
-
-    const matchRequest = {
-      userId: currentUserId,
-      language,
-      antiBullying,
-      geoEnabled,
-      selectedCountry: selectedCountryName,
-      filterEnabled,
-      filters,
-      avatar: selectedAvatarFile,
-    };
-
-    console.log("Sending match request:", matchRequest);
-    wsService.requestMatch(matchRequest);
-  }, [
-    antiBullying,
-    currentUserId,
-    dict.countries,
-    filterEnabled,
-    filters,
-    geoEnabled,
-    language,
-    selectedAvatarFile,
-    selectedCountryIndex,
-  ]);
-
   useEffect(() => {
     const timer = setInterval(() => {
       setSeconds((s) => s + 1);
@@ -90,18 +54,33 @@ export default function SearchingPage() {
     wsService.on('match_found', handleMatchFound);
     wsService.on('error', handleError);
     wsService.on('connection_failed', handleConnectionFailed);
-    wsService.on('connected', sendMatchRequest);
 
     const initWebSocket = async () => {
       try {
-        const alreadyConnected = wsService.isConnected();
         await wsService.connect();
         if (cancelled || createdRef.current) {
           return;
         }
-        if (alreadyConnected) {
-          sendMatchRequest();
-        }
+
+        const countries = dict.countries || [];
+        const selectedCountryName =
+          geoEnabled && selectedCountryIndex != null && selectedCountryIndex >= 0
+            ? countries[selectedCountryIndex] || ""
+            : "";
+
+        const matchRequest = {
+          userId: currentUserId,
+          language,
+          antiBullying,
+          geoEnabled,
+          selectedCountry: selectedCountryName,
+          filterEnabled,
+          filters,
+          avatar: selectedAvatarFile,
+        };
+
+        console.log("Sending match request:", matchRequest);
+        wsService.requestMatch(matchRequest);
       } catch (error) {
         console.error('WebSocket connection error:', error);
       }
@@ -115,13 +94,26 @@ export default function SearchingPage() {
       wsService.off('match_found', handleMatchFound);
       wsService.off('error', handleError);
       wsService.off('connection_failed', handleConnectionFailed);
-      wsService.off('connected', sendMatchRequest);
+      if (!createdRef.current) {
+        wsService.clearMatchRequest();
+      }
     };
-  }, [sendMatchRequest]);
+  }, [
+    antiBullying,
+    currentUserId,
+    dict.countries,
+    filterEnabled,
+    filters,
+    geoEnabled,
+    language,
+    selectedAvatarFile,
+    selectedCountryIndex,
+  ]);
 
   const handleMatchFound = (payload) => {
     if (createdRef.current) return;
     createdRef.current = true;
+    wsService.clearMatchRequest();
 
     const {
       chatId,
@@ -186,6 +178,7 @@ export default function SearchingPage() {
   };
 
   const handleCancel = () => {
+    wsService.clearMatchRequest();
     wsService.disconnect();
     nav('/');
   };

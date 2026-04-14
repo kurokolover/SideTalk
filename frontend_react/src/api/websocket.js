@@ -37,6 +37,7 @@ class WebSocketService {
     this.connectionPromise = null;
     this.userId = null;
     this.wsSessionId = null;
+    this.activeMatchRequest = null;
   }
 
   getUserId() {
@@ -138,6 +139,10 @@ class WebSocketService {
         this.connectionPromise = null;
 
         this.sendUserIdentification();
+
+        if (this.activeMatchRequest) {
+          this.send('match_request', this.activeMatchRequest, true);
+        }
 
         this.notifyListeners('connected', { userId: this.getUserId() });
 
@@ -345,9 +350,17 @@ class WebSocketService {
       ...matchRequest,
       userId: this.getWsSessionId(),
     };
+    this.activeMatchRequest = requestWithUserId;
     if (!this.send('match_request', requestWithUserId)) {
       console.error('Failed to send match request - WebSocket not connected');
     }
+  }
+
+  clearMatchRequest() {
+    this.activeMatchRequest = null;
+    this.pendingMessages = this.pendingMessages.filter(
+      (message) => message.type !== 'match_request'
+    );
   }
 
   sendMessage(chatMessage) {
@@ -370,6 +383,7 @@ class WebSocketService {
 
   disconnect() {
     this.isIntentionallyClosed = true;
+    this.clearMatchRequest();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
