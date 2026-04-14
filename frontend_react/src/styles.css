@@ -27,6 +27,9 @@
   --accent-cream: #f5e6c8;
   --accent-forest: #3a4a22;
   --accent-forest: #3a4a22;
+  --flag-width: 28px;
+  --flag-height: 18px;
+  --flag-radius: 4px;
 }
 
 *,
@@ -1291,10 +1294,11 @@ body::after {
 }
 
 .chat-peer__flag {
-  width: 28px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: fill;
+  width: var(--flag-width);
+  height: var(--flag-height);
+  border-radius: var(--flag-radius);
+  object-fit: cover;
+  object-position: center;
   display: block;
   background: transparent;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
@@ -1839,10 +1843,11 @@ body::after {
 }
 
 .mychats-item__flag {
-  width: 28px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: fill;
+  width: var(--flag-width);
+  height: var(--flag-height);
+  border-radius: var(--flag-radius);
+  object-fit: cover;
+  object-position: center;
   display: block;
   background: transparent;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
@@ -2407,10 +2412,11 @@ body::after {
 
 /* Флаги стран */
 .country-flag {
-  width: 28px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: fill;
+  width: var(--flag-width);
+  height: var(--flag-height);
+  border-radius: var(--flag-radius);
+  object-fit: cover;
+  object-position: center;
   display: block;
   background: transparent;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
@@ -2418,10 +2424,11 @@ body::after {
 }
 
 .country-flag-icon {
-  width: 28px;
-  height: 18px;
-  border-radius: 4px;
-  object-fit: fill;
+  width: var(--flag-width);
+  height: var(--flag-height);
+  border-radius: var(--flag-radius);
+  object-fit: cover;
+  object-position: center;
   display: block;
   background: transparent;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
@@ -2550,6 +2557,12 @@ body::after {
       max(10px, env(safe-area-inset-bottom));
     gap: 0;
     overflow: hidden;
+    transition:
+      top 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      min-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      padding 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   body.chat-route-lock .page-viewport,
@@ -2557,6 +2570,7 @@ body::after {
     min-height: 0;
     height: 100%;
     overflow: hidden;
+    transition: padding 0.24s ease, transform 0.24s ease;
   }
 
   body.chat-route-lock .chat-page {
@@ -2576,11 +2590,18 @@ body::after {
     border-bottom: 1px solid rgba(180, 140, 80, 0.24);
     box-shadow: 0 12px 22px rgba(94, 66, 33, 0.08);
     backdrop-filter: blur(10px);
+    transition:
+      padding 0.24s ease,
+      border-radius 0.24s ease,
+      box-shadow 0.24s ease,
+      background 0.24s ease,
+      transform 0.24s ease;
   }
 
   body.chat-route-lock .chat-messages {
     flex: 1 1 auto;
     padding: 12px 8px 10px;
+    transition: padding 0.24s ease;
   }
 
   body.chat-route-lock .chat-input {
@@ -2589,6 +2610,47 @@ body::after {
     z-index: 20;
     margin-top: 8px;
     box-shadow: 0 -10px 24px rgba(94, 66, 33, 0.08);
+    transition:
+      transform 0.24s ease,
+      margin-top 0.24s ease,
+      box-shadow 0.24s ease,
+      border-color 0.24s ease,
+      background 0.24s ease;
+  }
+
+  body.chat-route-lock .chat-antibullying-banner {
+    transition: margin 0.24s ease, opacity 0.24s ease, transform 0.24s ease;
+  }
+
+  body.chat-route-lock--keyboard .chat-app {
+    padding:
+      calc(8px + env(safe-area-inset-top))
+      10px
+      max(8px, env(safe-area-inset-bottom));
+  }
+
+  body.chat-route-lock--keyboard .chat-header {
+    padding: 8px 8px 10px;
+    border-radius: 20px 20px 14px 14px;
+    box-shadow: 0 8px 18px rgba(94, 66, 33, 0.07);
+  }
+
+  body.chat-route-lock--keyboard .chat-antibullying-banner {
+    margin-top: 8px;
+    transform: translateY(-1px);
+    opacity: 0.94;
+  }
+
+  body.chat-route-lock--keyboard .chat-messages {
+    padding: 10px 8px 8px;
+  }
+
+  body.chat-route-lock--keyboard .chat-input {
+    margin-top: 6px;
+    transform: translateY(-2px);
+    background: rgba(239, 230, 206, 0.98);
+    border-color: rgba(94, 66, 33, 0.3);
+    box-shadow: 0 -8px 20px rgba(94, 66, 33, 0.07);
   }
 }
 
@@ -2693,8 +2755,8 @@ body::after {
   }
 
   .country-flag {
-    width: 28px;
-    height: 18px;
+    width: var(--flag-width);
+    height: var(--flag-height);
   }
 
   .tooltip {
@@ -2808,8 +2870,8 @@ body::after {
   }
 
   .country-flag {
-    width: 28px;
-    height: 18px;
+    width: var(--flag-width);
+    height: var(--flag-height);
   }
 
   .tooltip {
@@ -2833,13 +2895,13 @@ body::after {
   }
 
   .chat-peer__flag {
-    width: 28px;
-    height: 18px;
+    width: var(--flag-width);
+    height: var(--flag-height);
   }
 
   .mychats-item__flag {
-    width: 28px;
-    height: 18px;
+    width: var(--flag-width);
+    height: var(--flag-height);
   }
 
   .story-like,

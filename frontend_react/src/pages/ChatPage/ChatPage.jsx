@@ -173,16 +173,36 @@ export default function ChatPage() {
     const root = document.documentElement;
     const body = document.body;
     const viewport = window.visualViewport;
+    let frameId = 0;
+
+    const keepChatAnchored = () => {
+      if (document.activeElement?.tagName !== "INPUT") {
+        return;
+      }
+
+      window.scrollTo(0, 0);
+      if (listRef.current) {
+        listRef.current.scrollTo({
+          top: listRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    };
 
     const syncChatViewport = () => {
       const height = viewport?.height || window.innerHeight;
       const offsetTop = viewport?.offsetTop || 0;
+      const keyboardInset = Math.max(0, window.innerHeight - height - offsetTop);
+      const keyboardOpen = keyboardInset > 120;
 
       root.style.setProperty("--chat-visual-height", `${height}px`);
       root.style.setProperty("--chat-visual-offset-top", `${offsetTop}px`);
+      root.style.setProperty("--chat-keyboard-inset", `${keyboardInset}px`);
+      body.classList.toggle("chat-route-lock--keyboard", keyboardOpen);
 
       if (document.activeElement?.tagName === "INPUT") {
-        window.scrollTo(0, 0);
+        cancelAnimationFrame(frameId);
+        frameId = window.requestAnimationFrame(keepChatAnchored);
       }
     };
 
@@ -194,9 +214,12 @@ export default function ChatPage() {
     window.addEventListener("resize", syncChatViewport);
 
     return () => {
+      cancelAnimationFrame(frameId);
       body.classList.remove("chat-route-lock");
+      body.classList.remove("chat-route-lock--keyboard");
       root.style.removeProperty("--chat-visual-height");
       root.style.removeProperty("--chat-visual-offset-top");
+      root.style.removeProperty("--chat-keyboard-inset");
       viewport?.removeEventListener("resize", syncChatViewport);
       viewport?.removeEventListener("scroll", syncChatViewport);
       window.removeEventListener("resize", syncChatViewport);
@@ -384,9 +407,12 @@ export default function ChatPage() {
               window.setTimeout(() => {
                 window.scrollTo(0, 0);
                 if (listRef.current) {
-                  listRef.current.scrollTop = listRef.current.scrollHeight;
+                  listRef.current.scrollTo({
+                    top: listRef.current.scrollHeight,
+                    behavior: "smooth",
+                  });
                 }
-              }, 120);
+              }, 140);
             }}
             placeholder={t("chat_placeholder")}
             onKeyDown={(e) => {
