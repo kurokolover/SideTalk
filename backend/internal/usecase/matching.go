@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +26,58 @@ type WaitingUser struct {
 	done         chan struct{}
 }
 
+func (w *WaitingUser) close() {
+	close(w.done)
+	close(w.ResponseChan)
+}
+
+var canonicalCountries = map[string]string{
+	"russia":         "russia",
+	"россия":         "russia",
+	"belarus":        "belarus",
+	"беларусь":       "belarus",
+	"kazakhstan":     "kazakhstan",
+	"казахстан":      "kazakhstan",
+	"georgia":        "georgia",
+	"грузия":         "georgia",
+	"armenia":        "armenia",
+	"армения":        "armenia",
+	"azerbaijan":     "azerbaijan",
+	"азербайджан":    "azerbaijan",
+	"uzbekistan":     "uzbekistan",
+	"узбекистан":     "uzbekistan",
+	"moldova":        "moldova",
+	"молдова":        "moldova",
+	"latvia":         "latvia",
+	"латвия":         "latvia",
+	"lithuania":      "lithuania",
+	"литва":          "lithuania",
+	"estonia":        "estonia",
+	"эстония":        "estonia",
+	"poland":         "poland",
+	"польша":         "poland",
+	"germany":        "germany",
+	"германия":       "germany",
+	"france":         "france",
+	"франция":        "france",
+	"spain":          "spain",
+	"испания":        "spain",
+	"italy":          "italy",
+	"италия":         "italy",
+	"turkey":         "turkey",
+	"турция":         "turkey",
+	"usa":            "usa",
+	"u.s.a.":         "usa",
+	"united states":  "usa",
+	"сша":            "usa",
+	"canada":         "canada",
+	"канада":         "canada",
+	"united kingdom": "united kingdom",
+	"great britain":  "united kingdom",
+	"uk":             "united kingdom",
+	"великобритания": "united kingdom",
+}
+
 func NewMatchingService() *MatchingService {
 	return &MatchingService{
 		waitingUsers:   make(map[string]*WaitingUser),
@@ -40,7 +93,7 @@ func (s *MatchingService) AddToQueue(req domain.MatchRequest) chan *domain.ChatS
 		req.UserID, req.Language, req.GeoEnabled, req.Country, req.FilterEnabled)
 
 	if existing, exists := s.waitingUsers[req.UserID]; exists {
-		close(existing.done)
+		existing.close()
 		delete(s.waitingUsers, req.UserID)
 		log.Printf("Replaced existing queue entry for user %s", req.UserID)
 	}
@@ -67,7 +120,7 @@ func (s *MatchingService) RemoveFromQueue(userID string) {
 	defer s.mu.Unlock()
 
 	if waiting, exists := s.waitingUsers[userID]; exists {
-		close(waiting.done)
+		waiting.close()
 		delete(s.waitingUsers, userID)
 		log.Printf("Removed user %s from queue", userID)
 	}
@@ -128,6 +181,8 @@ func (s *MatchingService) matchWaitingUsersLocked() {
 
 			current.ResponseChan <- session
 			candidate.ResponseChan <- session
+			current.close()
+			candidate.close()
 
 			used[current.UserID] = true
 			used[candidate.UserID] = true
@@ -147,8 +202,10 @@ func (s *MatchingService) isCompatible(req1, req2 domain.MatchRequest) bool {
 	)
 
 	if req1.GeoEnabled || req2.GeoEnabled {
-		if req1.Country != "" && req2.Country != "" && req1.Country != req2.Country {
-			log.Printf("Country mismatch: %s != %s", req1.Country, req2.Country)
+		country1 := normalizeCountry(req1.Country)
+		country2 := normalizeCountry(req2.Country)
+		if country1 != "" && country2 != "" && country1 != country2 {
+			log.Printf("Country mismatch: %s (%s) != %s (%s)", req1.Country, country1, req2.Country, country2)
 			return false
 		}
 	}
@@ -201,6 +258,19 @@ func normalizeFilterValue(value string) string {
 		return "any"
 	}
 	return value
+}
+
+func normalizeCountry(value string) string {
+	normalized := strings.TrimSpace(strings.ToLower(value))
+	if normalized == "" {
+		return ""
+	}
+
+	if canonical, ok := canonicalCountries[normalized]; ok {
+		return canonical
+	}
+
+	return normalized
 }
 
 func (s *MatchingService) createSession(user1ID, user2ID string, antiBullying bool) *domain.ChatSession {

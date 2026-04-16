@@ -31,6 +31,90 @@ func TestMatchingServiceCreatesPairsForFourClients(t *testing.T) {
 	}
 }
 
+func TestMatchingServiceCreatesFivePairsForTenClients(t *testing.T) {
+	service := NewMatchingService()
+	channels := make([]chan *domain.ChatSession, 0, 10)
+
+	for i := 0; i < 10; i++ {
+		channels = append(channels, service.AddToQueue(matchRequestForTest(
+			"client-"+string(rune('A'+i)),
+		)))
+	}
+
+	sessionCounts := make(map[string]int)
+	for _, sessionChan := range channels {
+		session := receiveSessionForTest(t, sessionChan)
+		sessionCounts[session.ID]++
+	}
+
+	if len(sessionCounts) != 5 {
+		t.Fatalf("expected 5 sessions for 10 clients, got %d", len(sessionCounts))
+	}
+
+	for sessionID, count := range sessionCounts {
+		if count != 2 {
+			t.Fatalf("expected session %s to have 2 participants, got %d", sessionID, count)
+		}
+	}
+}
+
+func TestMatchingServiceMatchesSameCountryAcrossLanguages(t *testing.T) {
+	service := NewMatchingService()
+
+	ru := matchRequestForTest("ru-client")
+	en := matchRequestForTest("en-client")
+	en.Language = "en"
+	ru.GeoEnabled = true
+	en.GeoEnabled = true
+	ru.Country = "Литва"
+	en.Country = "Lithuania"
+
+	ruChan := service.AddToQueue(ru)
+	enChan := service.AddToQueue(en)
+
+	ruSession := receiveSessionForTest(t, ruChan)
+	enSession := receiveSessionForTest(t, enChan)
+
+	if ruSession.ID != enSession.ID {
+		t.Fatalf("expected localized country values to match into one session")
+	}
+}
+
+func TestMatchingServiceDoesNotMatchDifferentCountries(t *testing.T) {
+	service := NewMatchingService()
+
+	first := matchRequestForTest("first-client")
+	second := matchRequestForTest("second-client")
+	first.GeoEnabled = true
+	second.GeoEnabled = true
+	first.Country = "Литва"
+	second.Country = "Latvia"
+
+	firstChan := service.AddToQueue(first)
+	secondChan := service.AddToQueue(second)
+
+	assertNoSessionForTest(t, firstChan)
+	assertNoSessionForTest(t, secondChan)
+}
+
+func TestMatchingServiceClosesPreviousQueueEntryOnRequeue(t *testing.T) {
+	service := NewMatchingService()
+
+	firstAttempt := service.AddToQueue(matchRequestForTest("same-user"))
+	secondAttempt := service.AddToQueue(matchRequestForTest("same-user"))
+
+	select {
+	case session, ok := <-firstAttempt:
+		if ok || session != nil {
+			t.Fatal("expected previous queue entry to be closed without a session")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for previous queue entry to close")
+	}
+
+	assertNoSessionForTest(t, secondAttempt)
+}
+
 func TestMatchingServiceTreatsEmptyFiltersAsAny(t *testing.T) {
 	service := NewMatchingService()
 
@@ -84,4 +168,16 @@ func receiveSessionForTest(t *testing.T, sessionChan chan *domain.ChatSession) *
 	}
 
 	return nil
+}
+
+func assertNoSessionForTest(t *testing.T, sessionChan chan *domain.ChatSession) {
+	t.Helper()
+
+	select {
+	case session := <-sessionChan:
+		if session != nil {
+			t.Fatalf("expected no session, got %s", session.ID)
+		}
+	case <-time.After(150 * time.Millisecond):
+	}
 }

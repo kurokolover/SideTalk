@@ -68,7 +68,9 @@ class WebSocketService {
   }
 
   getWebSocketUrls() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const isHttpsPage = window.location.protocol === 'https:';
+    const protocol = isHttpsPage ? 'wss:' : 'ws:';
+    const currentPort = window.location.port || (isHttpsPage ? '443' : '80');
     const urls = [];
     const seen = new Set();
 
@@ -80,14 +82,29 @@ class WebSocketService {
       urls.push(url);
     };
 
-    if (BACKEND_URL) {
-      addUrl(`${toWebSocketBaseUrl(BACKEND_URL)}/ws`);
-    }
-
     addUrl(`${protocol}//${window.location.host}/ws`);
 
-    if (window.location.port && window.location.port !== '8080') {
-      addUrl(`${protocol}//${window.location.hostname}:8080/ws`);
+    if (BACKEND_URL) {
+      try {
+        const backendUrl = new URL(BACKEND_URL, window.location.origin);
+        const backendUsesHttps = backendUrl.protocol === 'https:';
+        const backendIsSameOrigin = backendUrl.origin === window.location.origin;
+
+        // On custom domains we should prefer same-origin `/ws`.
+        // Cross-origin insecure ws:// fallbacks are blocked on https pages.
+        if (!isHttpsPage || backendUsesHttps || backendIsSameOrigin) {
+          addUrl(`${toWebSocketBaseUrl(BACKEND_URL)}/ws`);
+        } else {
+          console.warn('Skipping insecure BACKEND_URL WebSocket candidate on https page:', BACKEND_URL);
+        }
+      } catch (error) {
+        console.warn('Failed to parse BACKEND_URL for WebSocket candidate:', BACKEND_URL, error);
+      }
+    }
+
+    // Keep a direct backend fallback for plain http domains and local IP deployments.
+    if (!isHttpsPage && currentPort !== '8080') {
+      addUrl(`ws://${window.location.hostname}:8080/ws`);
     }
 
     return urls;
@@ -140,7 +157,7 @@ class WebSocketService {
 
         this.sendUserIdentification();
 
-        if (this.activeMatchRequest) {
+        if (this.activeMatchRequest && !this.hasPendingMessage('match_request')) {
           this.send('match_request', this.activeMatchRequest, true);
         }
 
@@ -274,6 +291,17 @@ class WebSocketService {
     }
   }
 
+  replacePendingMessage(type, payload) {
+    this.pendingMessages = this.pendingMessages.filter(
+      (message) => message.type !== type
+    );
+    this.pendingMessages.push({ type, payload });
+  }
+
+  hasPendingMessage(type) {
+    return this.pendingMessages.some((message) => message.type === type);
+  }
+
   handleMessage(message) {
     const { type, payload } = message;
     this.notifyListeners(type, payload);
@@ -318,7 +346,7 @@ class WebSocketService {
       } catch (error) {
         console.error('Error sending WebSocket message:', error);
         if (queueIfDisconnected) {
-          this.pendingMessages.push({ type, payload });
+          this.replacePendingMessage(type, payload);
         }
         return false;
       }
@@ -327,7 +355,7 @@ class WebSocketService {
 
       if (queueIfDisconnected) {
         console.log('Queueing message for later:', type);
-        this.pendingMessages.push({ type, payload });
+        this.replacePendingMessage(type, payload);
       }
 
       if (!this.isIntentionallyClosed) {
@@ -351,7 +379,7 @@ class WebSocketService {
       userId: this.getWsSessionId(),
     };
     this.activeMatchRequest = requestWithUserId;
-    if (!this.send('match_request', requestWithUserId)) {
+    if (!this.send('match_request', requestWithUserId, true)) {
       console.error('Failed to send match request - WebSocket not connected');
     }
   }
