@@ -21,7 +21,11 @@ export default function ChatPage() {
   const [connectionStatus, setConnectionStatus] = useState("checking");
   const [peerEndedModalOpen, setPeerEndedModalOpen] = useState(false);
   const listRef = useRef(null);
+  const inputRef = useRef(null);
   const keyboardSettleTimeoutRef = useRef(null);
+  const keyboardTransitionTimeoutRef = useRef(null);
+  const keyboardBlurTimeoutRef = useRef(null);
+  const lastKeyboardOpenRef = useRef(false);
 
   const formatTime = (timestamp) => {
     const date = new Date(timestamp);
@@ -176,6 +180,14 @@ export default function ChatPage() {
     const viewport = window.visualViewport;
     let frameId = 0;
 
+    const enableKeyboardTransition = () => {
+      body.classList.add("chat-route-lock--keyboard-transitioning");
+      window.clearTimeout(keyboardTransitionTimeoutRef.current);
+      keyboardTransitionTimeoutRef.current = window.setTimeout(() => {
+        body.classList.remove("chat-route-lock--keyboard-transitioning");
+      }, 280);
+    };
+
     const pinChatToBottom = () => {
       if (document.activeElement?.tagName !== "INPUT") {
         return;
@@ -194,6 +206,11 @@ export default function ChatPage() {
       const isZoomed = viewportScale > 1.01;
       const keyboardInset = Math.max(0, window.innerHeight - height - offsetTop);
       const keyboardOpen = !isZoomed && keyboardInset > 120;
+
+      if (lastKeyboardOpenRef.current !== keyboardOpen) {
+        enableKeyboardTransition();
+        lastKeyboardOpenRef.current = keyboardOpen;
+      }
 
       root.style.setProperty("--chat-visual-height", `${height}px`);
       root.style.setProperty("--chat-visual-offset-top", `${offsetTop}px`);
@@ -222,9 +239,12 @@ export default function ChatPage() {
     return () => {
       cancelAnimationFrame(frameId);
       window.clearTimeout(keyboardSettleTimeoutRef.current);
+      window.clearTimeout(keyboardTransitionTimeoutRef.current);
+      window.clearTimeout(keyboardBlurTimeoutRef.current);
       body.classList.remove("chat-route-lock");
       body.classList.remove("chat-route-lock--keyboard");
       body.classList.remove("chat-route-lock--input-focused");
+      body.classList.remove("chat-route-lock--keyboard-transitioning");
       body.classList.remove("chat-route-lock--zoomed");
       root.style.removeProperty("--chat-visual-height");
       root.style.removeProperty("--chat-visual-offset-top");
@@ -241,6 +261,60 @@ export default function ChatPage() {
       prev.map((c) => (c.id === id ? { ...c, messages: newMessages } : c))
     );
   };
+
+  const keepComposerAnchored = useCallback((smooth = false) => {
+    window.scrollTo(0, 0);
+
+    if (listRef.current) {
+      if (smooth) {
+        listRef.current.scrollTo({
+          top: listRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      } else {
+        listRef.current.scrollTop = listRef.current.scrollHeight;
+      }
+    }
+  }, []);
+
+  const handleInputFocus = useCallback(() => {
+    document.body.classList.add("chat-route-lock--input-focused");
+    document.body.classList.add("chat-route-lock--keyboard-transitioning");
+    window.clearTimeout(keyboardBlurTimeoutRef.current);
+    window.clearTimeout(keyboardTransitionTimeoutRef.current);
+    window.clearTimeout(keyboardSettleTimeoutRef.current);
+
+    window.setTimeout(() => {
+      keepComposerAnchored(false);
+    }, 50);
+
+    keyboardSettleTimeoutRef.current = window.setTimeout(() => {
+      keepComposerAnchored(true);
+    }, 90);
+
+    keyboardTransitionTimeoutRef.current = window.setTimeout(() => {
+      document.body.classList.remove("chat-route-lock--keyboard-transitioning");
+    }, 280);
+  }, [keepComposerAnchored]);
+
+  const handleInputBlur = useCallback(() => {
+    window.clearTimeout(keyboardSettleTimeoutRef.current);
+    window.clearTimeout(keyboardBlurTimeoutRef.current);
+
+    keyboardBlurTimeoutRef.current = window.setTimeout(() => {
+      if (document.activeElement === inputRef.current) {
+        return;
+      }
+
+      document.body.classList.add("chat-route-lock--keyboard-transitioning");
+      document.body.classList.remove("chat-route-lock--input-focused");
+
+      window.clearTimeout(keyboardTransitionTimeoutRef.current);
+      keyboardTransitionTimeoutRef.current = window.setTimeout(() => {
+        document.body.classList.remove("chat-route-lock--keyboard-transitioning");
+      }, 280);
+    }, 140);
+  }, []);
 
   const send = async () => {
     const value = text.trim();
@@ -411,38 +485,28 @@ export default function ChatPage() {
       ) : (
         <div className="chat-input">
           <input
+            ref={inputRef}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            onFocus={() => {
-              document.body.classList.add("chat-route-lock--input-focused");
-              window.clearTimeout(keyboardSettleTimeoutRef.current);
-              window.setTimeout(() => {
-                window.scrollTo(0, 0);
-                if (listRef.current) {
-                  listRef.current.scrollTop = listRef.current.scrollHeight;
-                }
-              }, 40);
-
-              keyboardSettleTimeoutRef.current = window.setTimeout(() => {
-                window.scrollTo(0, 0);
-                if (listRef.current) {
-                  listRef.current.scrollTo({
-                    top: listRef.current.scrollHeight,
-                    behavior: "smooth",
-                  });
-                }
-              }, 220);
-            }}
-            onBlur={() => {
-              document.body.classList.remove("chat-route-lock--input-focused");
-              window.clearTimeout(keyboardSettleTimeoutRef.current);
-            }}
+            onFocus={handleInputFocus}
+            onBlur={handleInputBlur}
             placeholder={t("chat_placeholder")}
             onKeyDown={(e) => {
               if (e.key === "Enter") send();
             }}
           />
-          <button className="chat-send" onClick={send}>
+          <button
+            className="chat-send"
+            onPointerDown={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={async () => {
+              await send();
+              if (inputRef.current && window.matchMedia("(max-width: 768px)").matches) {
+                inputRef.current.focus({ preventScroll: true });
+                keepComposerAnchored(true);
+              }
+            }}
+          >
             ➤
           </button>
         </div>

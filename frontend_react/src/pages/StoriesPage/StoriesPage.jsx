@@ -1,7 +1,59 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "../../context/AppContext";
 import { getHistories, addHistory, addComment as apiAddComment, addLike, removeLike } from "../../api/storiesApi.jsx";
 import { saveLikedStory, removeLikedStory, isStoryLiked } from "../../utils/localStorage";
+
+const STORY_REFRESH_INTERVAL_MS = 15000;
+
+const mergeStoryComments = (existingComments = [], fetchedComments = []) => {
+  const merged = new Map();
+
+  existingComments.forEach((comment) => {
+    merged.set(comment.id, comment);
+  });
+
+  fetchedComments.forEach((comment) => {
+    merged.set(comment.id, {
+      ...(merged.get(comment.id) || {}),
+      ...comment,
+    });
+  });
+
+  return Array.from(merged.values());
+};
+
+const formatStoryFromApi = (item, existingStory = null) => {
+  const fetchedComments = (item.comments || []).map((comment) => ({
+    id: comment.id,
+    authorId: comment.author_id || comment.id,
+    textRu: comment.text,
+    textEn: comment.text,
+  }));
+
+  return {
+    id: item.id,
+    authorId: item.author_id || item.id,
+    textRu: item.text,
+    textEn: item.text,
+    createdAt: item.time ? new Date(item.time).getTime() : existingStory?.createdAt || Date.now(),
+    liked: isStoryLiked(item.id),
+    likes: typeof item.likes === "number" ? item.likes : existingStory?.likes || 0,
+    comments: mergeStoryComments(existingStory?.comments || [], fetchedComments),
+  };
+};
+
+const mergeStoriesWithServerData = (existingStories, fetchedStories) => {
+  const existingById = new Map(existingStories.map((story) => [story.id, story]));
+  const mergedFetchedStories = fetchedStories.map((item) =>
+    formatStoryFromApi(item, existingById.get(item.id))
+  );
+  const fetchedIds = new Set(mergedFetchedStories.map((story) => story.id));
+  const localOnlyStories = existingStories.filter((story) => !fetchedIds.has(story.id));
+
+  return [...localOnlyStories, ...mergedFetchedStories].sort(
+    (left, right) => right.createdAt - left.createdAt
+  );
+};
 
 // лента историй: публикация, лайк toggle, комментарии
 export default function StoriesPage() {
@@ -13,39 +65,134 @@ export default function StoriesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
+  const refreshInFlightRef = useRef(false);
+  const keyboardSyncFrameRef = useRef(0);
+  const keyboardSyncTimeoutRef = useRef(null);
 
-  // Загрузка историй с бэкенда при монтировании компонента
-  useEffect(() => {
-    const fetchStories = async () => {
-      try {
+  const loadStories = useCallback(async ({ silent = false } = {}) => {
+    if (refreshInFlightRef.current) {
+      return;
+    }
+
+    try {
+      refreshInFlightRef.current = true;
+      if (!silent) {
         setIsLoading(true);
-        const data = await getHistories();
-        // Преобразуем данные с бэкенда в формат фронтенда
-        const formattedStories = data.map((item) => ({
-          id: item.id,
-          authorId: item.author_id || item.id,
-          textRu: item.text,
-          textEn: item.text,
-          createdAt: item.time ? new Date(item.time).getTime() : Date.now(),
-          liked: isStoryLiked(item.id), // Проверяем, лайкнута ли история в localStorage
-          likes: item.likes || 0,
-          comments: (item.comments || []).map((c) => ({
-            id: c.id,
-            authorId: c.author_id || c.id,
-            textRu: c.text,
-            textEn: c.text,
-          })),
-        }));
-        setStories(formattedStories);
-      } catch (error) {
-        console.error("Failed to fetch stories:", error);
-      } finally {
+      }
+
+      const data = await getHistories();
+      setStories((prevStories) => mergeStoriesWithServerData(prevStories, data));
+    } catch (error) {
+      console.error("Failed to fetch stories:", error);
+    } finally {
+      refreshInFlightRef.current = false;
+      if (!silent) {
         setIsLoading(false);
+      }
+    }
+  }, [setStories]);
+
+  useEffect(() => {
+    loadStories();
+
+    const refreshStories = () => {
+      if (document.visibilityState === "visible") {
+        loadStories({ silent: true });
       }
     };
 
-    fetchStories();
-  }, [setStories]);
+    const intervalId = window.setInterval(refreshStories, STORY_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", refreshStories);
+    document.addEventListener("visibilitychange", refreshStories);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshStories);
+      document.removeEventListener("visibilitychange", refreshStories);
+    };
+  }, [loadStories]);
+
+  useEffect(() => {
+    const body = document.body;
+    const root = document.documentElement;
+    const viewport = window.visualViewport;
+
+    const isStoriesField = (element) =>
+      element instanceof HTMLElement &&
+      !!element.closest(".stories-page") &&
+      (element.tagName === "INPUT" || element.tagName === "TEXTAREA");
+
+    const syncViewportState = () => {
+      window.cancelAnimationFrame(keyboardSyncFrameRef.current);
+      keyboardSyncFrameRef.current = window.requestAnimationFrame(() => {
+        const viewportHeight = viewport?.height || window.innerHeight;
+        const offsetTop = viewport?.offsetTop || 0;
+        const viewportScale = viewport?.scale || 1;
+        const keyboardInset = Math.max(0, window.innerHeight - viewportHeight - offsetTop);
+        const activeField = document.activeElement;
+        const fieldFocused = isStoriesField(activeField);
+        const keyboardOpen = fieldFocused && viewportScale <= 1.01 && keyboardInset > 120;
+        const keyboardShift = Math.min(keyboardInset, 72) * 0.38;
+
+        body.classList.add("stories-route-lock");
+        body.classList.toggle("stories-route-lock--input-focused", fieldFocused);
+        body.classList.toggle("stories-route-lock--keyboard", keyboardOpen);
+        root.style.setProperty("--stories-visual-height", `${viewportHeight}px`);
+        root.style.setProperty("--stories-visual-offset-top", `${offsetTop}px`);
+        root.style.setProperty("--stories-keyboard-inset", `${keyboardInset}px`);
+        root.style.setProperty("--stories-keyboard-shift", `${keyboardShift}px`);
+      });
+    };
+
+    const handleFocusIn = (event) => {
+      if (!isStoriesField(event.target)) {
+        return;
+      }
+
+      syncViewportState();
+      window.clearTimeout(keyboardSyncTimeoutRef.current);
+      keyboardSyncTimeoutRef.current = window.setTimeout(() => {
+        syncViewportState();
+        event.target.scrollIntoView({
+          block: "center",
+          behavior: "smooth",
+        });
+      }, 140);
+    };
+
+    const handleFocusOut = (event) => {
+      if (!isStoriesField(event.target)) {
+        return;
+      }
+
+      window.clearTimeout(keyboardSyncTimeoutRef.current);
+      keyboardSyncTimeoutRef.current = window.setTimeout(syncViewportState, 120);
+    };
+
+    syncViewportState();
+    viewport?.addEventListener("resize", syncViewportState);
+    viewport?.addEventListener("scroll", syncViewportState);
+    window.addEventListener("resize", syncViewportState);
+    document.addEventListener("focusin", handleFocusIn);
+    document.addEventListener("focusout", handleFocusOut);
+
+    return () => {
+      window.cancelAnimationFrame(keyboardSyncFrameRef.current);
+      window.clearTimeout(keyboardSyncTimeoutRef.current);
+      body.classList.remove("stories-route-lock");
+      body.classList.remove("stories-route-lock--keyboard");
+      body.classList.remove("stories-route-lock--input-focused");
+      root.style.removeProperty("--stories-visual-height");
+      root.style.removeProperty("--stories-visual-offset-top");
+      root.style.removeProperty("--stories-keyboard-inset");
+      root.style.removeProperty("--stories-keyboard-shift");
+      viewport?.removeEventListener("resize", syncViewportState);
+      viewport?.removeEventListener("scroll", syncViewportState);
+      window.removeEventListener("resize", syncViewportState);
+      document.removeEventListener("focusin", handleFocusIn);
+      document.removeEventListener("focusout", handleFocusOut);
+    };
+  }, []);
 
   const publish = async () => {
     const v = text.trim();
@@ -72,9 +219,10 @@ export default function StoriesPage() {
         comments: [],
       };
 
-      setStories([newStory, ...stories]);
+      setStories((prevStories) => [newStory, ...prevStories.filter((story) => story.id !== storyId)]);
       setText("");
       setComposeOpen(false);
+      loadStories({ silent: true });
     } catch (error) {
       console.error("Failed to publish story:", error);
       setPublishError(
@@ -110,6 +258,7 @@ export default function StoriesPage() {
               : s
           )
         );
+        loadStories({ silent: true });
       } catch (error) {
         console.error("Failed to remove like:", error);
       }
@@ -132,6 +281,7 @@ export default function StoriesPage() {
               : s
           )
         );
+        loadStories({ silent: true });
       } catch (error) {
         console.error("Failed to add like:", error);
       }
@@ -162,6 +312,7 @@ export default function StoriesPage() {
             : s
         )
       );
+      loadStories({ silent: true });
     } catch (error) {
       console.error("Failed to add comment:", error);
     }
@@ -175,7 +326,11 @@ export default function StoriesPage() {
 
       {/* список историй выше кнопки */}
       <div className="stories-scroll">
-        {stories.length === 0 ? (
+        {isLoading && stories.length === 0 ? (
+          <div className="empty-state">
+            {language === "ru" ? "загружаем истории..." : "loading stories..."}
+          </div>
+        ) : stories.length === 0 ? (
           <div className="empty-state">{t("stories_empty")}</div>
         ) : (
           stories.map((s) => (

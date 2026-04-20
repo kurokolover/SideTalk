@@ -789,6 +789,11 @@ body::after {
   border-radius: 24px;
   background: #fffef7;
   box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+  transition:
+    transform 0.28s ease,
+    padding 0.28s ease,
+    border-radius 0.28s ease,
+    box-shadow 0.28s ease;
 }
 
 .modal-title {
@@ -1929,6 +1934,7 @@ body::after {
   flex-direction: column;
   gap: 12px;
   margin-bottom: 14px;
+  transition: transform 0.28s ease, gap 0.28s ease;
 }
 
 .story-compose textarea {
@@ -1944,7 +1950,11 @@ body::after {
   line-height: 1.45;
   color: var(--text-main);
   outline: none;
-  transition: all 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.28s ease,
+    background 0.28s ease;
 }
 
 .story-compose textarea:focus {
@@ -2187,6 +2197,7 @@ body::after {
   display: flex;
   gap: 10px;
   margin-top: 12px;
+  transition: transform 0.28s ease, gap 0.28s ease;
 }
 
 .story-comments__input input {
@@ -2200,7 +2211,11 @@ body::after {
   font-size: 16px;
   line-height: 1.4;
   outline: none;
-  transition: all 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.28s ease,
+    background 0.28s ease;
 }
 
 .story-comments__input input:focus {
@@ -2236,6 +2251,10 @@ body::after {
   flex-direction: column;
   gap: 14px;
   align-items: center;
+  transition:
+    transform 0.28s ease,
+    padding 0.28s ease,
+    gap 0.28s ease;
 }
 
 .stories-scroll {
@@ -2248,6 +2267,7 @@ body::after {
   gap: 14px;
   padding: 7px;
   width: 100%;
+  transition: padding 0.28s ease, transform 0.28s ease;
 }
 
 .stories-bottom {
@@ -2255,6 +2275,11 @@ body::after {
   bottom: 0;
   padding-top: 12px;
   background: linear-gradient(to top, var(--bg-card-inner) 60%, transparent);
+  transition:
+    transform 0.28s ease,
+    padding 0.28s ease,
+    opacity 0.28s ease,
+    background 0.28s ease;
 }
 
 /* полноэкранные страницы внутри (чат/после чата) */
@@ -2533,6 +2558,7 @@ body::after {
     overflow: hidden;
     overscroll-behavior: none;
     touch-action: pan-x pan-y pinch-zoom;
+    -webkit-overflow-scrolling: auto;
   }
 
   body.chat-route-lock #root {
@@ -2559,6 +2585,10 @@ body::after {
     overflow: hidden;
     transform: translate3d(0, var(--chat-visual-offset-top, 0px), 0);
     will-change: height, transform;
+    transition:
+      height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   body.chat-route-lock .page-viewport,
@@ -2570,6 +2600,7 @@ body::after {
 
   body.chat-route-lock .chat-page {
     padding: 0;
+    overscroll-behavior: none;
   }
 
   body.chat-route-lock .chat-header {
@@ -2586,17 +2617,22 @@ body::after {
     box-shadow: 0 12px 22px rgba(94, 66, 33, 0.08);
     backdrop-filter: blur(10px);
     transition:
-      padding 0.18s ease,
-      border-radius 0.18s ease,
-      box-shadow 0.18s ease,
-      background 0.18s ease;
+      padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      border-radius 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      background 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   body.chat-route-lock .chat-messages {
     flex: 1 1 auto;
     padding: 12px 8px 10px;
     scroll-behavior: auto;
-    transition: padding 0.18s ease;
+    overscroll-behavior: contain;
+    transition:
+      padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.24s ease;
   }
 
   body.chat-route-lock .chat-input {
@@ -2606,15 +2642,19 @@ body::after {
     margin-top: 8px;
     box-shadow: 0 -10px 24px rgba(94, 66, 33, 0.08);
     transition:
-      transform 0.18s ease,
-      margin-top 0.18s ease,
-      box-shadow 0.18s ease,
-      border-color 0.18s ease,
-      background 0.18s ease;
+      transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      margin-top 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      background 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.22s ease;
   }
 
   body.chat-route-lock .chat-antibullying-banner {
-    transition: margin 0.18s ease, opacity 0.18s ease, transform 0.18s ease;
+    transition:
+      margin 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.24s ease,
+      transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   body.chat-route-lock--keyboard .chat-app {
@@ -2642,7 +2682,7 @@ body::after {
 
   body.chat-route-lock--keyboard .chat-input {
     margin-top: 6px;
-    transform: translateY(-1px);
+    transform: translateY(-2px) scale(0.998);
     background: rgba(239, 230, 206, 0.98);
     border-color: rgba(94, 66, 33, 0.3);
     box-shadow: 0 -8px 20px rgba(94, 66, 33, 0.07);
@@ -2650,6 +2690,14 @@ body::after {
 
   body.chat-route-lock--input-focused .chat-input {
     box-shadow: 0 -12px 28px rgba(94, 66, 33, 0.1);
+  }
+
+  body.chat-route-lock--keyboard-transitioning .chat-app,
+  body.chat-route-lock--keyboard-transitioning .chat-header,
+  body.chat-route-lock--keyboard-transitioning .chat-messages,
+  body.chat-route-lock--keyboard-transitioning .chat-input,
+  body.chat-route-lock--keyboard-transitioning .chat-antibullying-banner {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   body.chat-route-lock--zoomed .chat-app,
@@ -2660,6 +2708,66 @@ body::after {
   body.chat-route-lock--zoomed .chat-input,
   body.chat-route-lock--zoomed .chat-antibullying-banner {
     transition: none;
+  }
+
+  body.stories-route-lock .stories-page--layout {
+    min-height: 0;
+  }
+
+  body.stories-route-lock .stories-scroll {
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+  }
+
+  body.stories-route-lock .stories-bottom {
+    padding-bottom: max(4px, env(safe-area-inset-bottom));
+  }
+
+  body.stories-route-lock .modal {
+    align-items: flex-end;
+    padding:
+      calc(12px + env(safe-area-inset-top))
+      0
+      calc(12px + env(safe-area-inset-bottom));
+  }
+
+  body.stories-route-lock .modal-content {
+    margin: 0 12px;
+    max-width: none;
+    border-radius: 26px 26px 22px 22px;
+  }
+
+  body.stories-route-lock--keyboard .stories-page--layout {
+    transform: translateY(calc(var(--stories-visual-offset-top, 0px) * 0.2));
+    gap: 10px;
+  }
+
+  body.stories-route-lock--keyboard .stories-scroll {
+    padding-bottom: calc(12px + max(10px, env(safe-area-inset-bottom)));
+  }
+
+  body.stories-route-lock--keyboard .stories-bottom {
+    transform: translateY(-3px);
+    padding-top: 8px;
+    opacity: 0.96;
+    background: linear-gradient(to top, rgba(254, 249, 237, 0.98) 72%, transparent);
+  }
+
+  body.stories-route-lock--keyboard .modal-content {
+    transform: translateY(calc(var(--stories-keyboard-shift, 0px) * -1));
+    padding: 18px 16px 16px;
+    border-radius: 24px 24px 18px 18px;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, 0.22);
+  }
+
+  body.stories-route-lock--keyboard .story-comments__input,
+  body.stories-route-lock--keyboard .story-compose {
+    transform: translateY(-2px);
+  }
+
+  body.stories-route-lock--input-focused .story-compose textarea,
+  body.stories-route-lock--input-focused .story-comments__input input {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.98);
   }
 }
 
